@@ -4,7 +4,8 @@
 prompt into a runnable, containerized **FastAPI** backend — then *proves it builds*,
 *fixes itself* when it doesn't, and *records the rationale* behind every file.
 
-> **Status:** Planning complete — implementation starting (Phase 0).
+> **Status:** Phase 0 (skeleton) complete — configuration, the typed `ProjectSpec` /
+> `GenerationState` models, an LLM client, and a CLI that parses a prompt into a spec.
 > See [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) for the full architecture and roadmap.
 
 ## The problem
@@ -49,15 +50,34 @@ Two deliberate design decisions (both detailed in the plan):
 Python 3.11 · FastAPI · Pydantic v2 · instructor · LiteLLM (OpenRouter) · Jinja2 ·
 SQLAlchemy · Alembic · Docker · pytest · UV
 
+## Getting started
+
+```bash
+# 1. Install (editable, with dev dependencies for the test suite)
+pip install -e ".[dev]"
+
+# 2. Configure your model access
+cp .env.example .env        # then add your OpenRouter API key to .env
+
+# 3. Parse a natural-language prompt into a ProjectSpec
+python -m vibestack "a blog API with users, posts and JWT auth"
+
+# 4. Run the tests (no API key or network required)
+python -m pytest
+```
+
+Phase 0 prints the structured `ProjectSpec` as JSON. Generation, validation, and packaging
+arrive in the following phases.
+
 ## Roadmap
 
-| Phase | Goal |
-|---|---|
-| P0 | Skeleton — spec parsing + CLI |
-| P1 | Happy-path generation (CRUD + auth) |
-| P2 | Docker validation + self-healing loop |
-| P3 | Change ledger + review council + API |
-| P4 | Polish, benchmark, demo |
+| Phase | Goal | Status |
+|---|---|---|
+| P0 | Skeleton — spec parsing + CLI | ✅ Done |
+| P1 | Happy-path generation (CRUD + auth) | Next |
+| P2 | Docker validation + self-healing loop | Planned |
+| P3 | Change ledger + review council + API | Planned |
+| P4 | Polish, benchmark, demo | Planned |
 
 See [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) for the full detail, component choices,
 and team task board.
