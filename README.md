@@ -4,9 +4,9 @@
 prompt into a runnable, containerized **FastAPI** backend — then *proves it builds*,
 *fixes itself* when it doesn't, and *records the rationale* behind every file.
 
-> **Status:** Phase 1 complete — VibeStack generates a complete, working FastAPI backend
-> (SQLAlchemy models, Pydantic schemas, CRUD routers, JWT auth, Docker, and tests) from a
-> specification. The generated project boots and passes its own test suite.
+> **Status:** Phase 2 complete — VibeStack generates a complete FastAPI backend, then
+> **proves it works** by building and running it behind three validation gates, and
+> **repairs it automatically** when a gate fails.
 > See [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) for the full architecture and roadmap.
 
 ## The problem
@@ -79,11 +79,42 @@ Add `--spec-only` to print the `ProjectSpec` as JSON without generating files.
 
 ### Where the language model is used
 
-The model is used for the one job it is genuinely better at — reading informal prose and
-turning it into a structured `ProjectSpec`. Code generation itself is deterministic and
-template-driven, so the same spec always produces the same files, generation costs nothing,
-and every output is unit-testable. The model returns in Phase 2 to *diagnose and repair*
-build failures.
+The model is used for the two jobs it is genuinely better at: reading informal prose and
+turning it into a structured `ProjectSpec`, and diagnosing a build failure well enough to
+repair it. Code generation itself is deterministic and template-driven, so the same spec
+always produces the same files, generation costs nothing, and every output is unit-testable.
+
+## Validation and self-healing
+
+Every generated project is built and run before you get it. Three gates run in order,
+cheapest first:
+
+| Gate | What it proves |
+|---|---|
+| `import` | Every module imports — no syntax errors, no missing names |
+| `boot` | The app starts, creates its tables, and answers `/health` |
+| `tests` | The generated test suite passes |
+
+With Docker the image is built first, so a broken Dockerfile or an invented dependency is
+caught too. When a gate fails, the loop:
+
+1. **classifies** the error against a deterministic taxonomy (missing dependency, undefined
+   name, database error, test failure, …) — no model call, so it is free and testable;
+2. sends **only the files the traceback names**, plus repair guidance for that category, to
+   the model;
+3. applies the patch, records it in the ledger, and **re-validates**.
+
+A **circuit breaker** caps this at 3 attempts. If the project still fails, VibeStack stops
+and prints the category, the failing gate, and the log — it never loops indefinitely, and it
+never hides a failure.
+
+```bash
+python -m vibestack --from-spec examples/blog_api.json --sandbox docker      # isolated
+python -m vibestack --from-spec examples/blog_api.json --sandbox subprocess  # fast
+python -m vibestack --from-spec examples/blog_api.json --no-validate         # skip
+```
+
+Validation runs without an API key — you just get a diagnosis instead of a repair.
 
 ## Roadmap
 
@@ -91,8 +122,8 @@ build failures.
 |---|---|---|
 | P0 | Skeleton — spec parsing + CLI | ✅ Done |
 | P1 | Happy-path generation (CRUD + auth) | ✅ Done |
-| P2 | Docker validation + self-healing loop | Next |
-| P3 | Change ledger + review council + API | Planned |
+| P2 | Docker validation + self-healing loop | ✅ Done |
+| P3 | Change ledger + review council + API | Next |
 | P4 | Polish, benchmark, demo | Planned |
 
 See [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) for the full detail, component choices,

@@ -6,6 +6,9 @@ Two ways to run a generation:
   specification first;
 * from a specification file, which needs no API key and always produces the
   same output — useful for demos, tests, and offline work.
+
+Generated projects are validated by default: they are built and run, and any
+failure is repaired automatically where possible.
 """
 
 import argparse
@@ -14,10 +17,12 @@ from pathlib import Path
 
 from vibestack.config import Settings
 from vibestack.llm_client import LLMClient
+from vibestack.llm_protocol import StructuredLLM
 from vibestack.orchestrator import generate_from_spec, run_pipeline
 from vibestack.spec import ProjectSpec
 from vibestack.stages.parse import parse_prompt_to_spec
 from vibestack.state import GenerationState
+from vibestack.validators import SandboxKind, build_validator
 
 DEFAULT_OUTPUT_DIRECTORY = "generated-backend"
 
@@ -50,21 +55,47 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print the specification as JSON without generating any files.",
     )
+    parser.add_argument(
+        "--no-validate",
+        action="store_true",
+        help="Skip building and testing the generated project.",
+    )
+    parser.add_argument(
+        "--sandbox",
+        choices=[kind.value for kind in SandboxKind],
+        default=SandboxKind.AUTO.value,
+        help=(
+            "How to validate: 'docker' for isolation, 'subprocess' for speed, "
+            "'auto' to prefer Docker when it is available (default: auto)."
+        ),
+    )
     return parser
 
 
+def _print_progress(message: str) -> None:
+    """Show a progress message from the validation and healing loop."""
+    print(f"  {message}", file=sys.stderr)
+
+
 def _report_results(state: GenerationState, output_directory: Path) -> None:
-    """Print a short summary of what was generated."""
-    file_count = len(state.generated_files)
-    print(f"\nGenerated {file_count} files in {output_directory}")
+    """Print a summary of what was generated and whether it works."""
+    print(f"\nGenerated {len(state.generated_files)} files in {output_directory}")
+
     print("\nWhat was created and why:")
     for entry in state.ledger:
         print(f"  [{entry.stage}] {entry.file_path}")
         print(f"      {entry.rationale}")
 
-    print("\nNext steps:")
-    print(f"  cd {output_directory}")
-    print("  docker compose up --build")
+    if state.build_passed:
+        print("\nValidation: passed. The project builds, starts, and passes its tests.")
+        if state.heal_attempts > 0:
+            print(f"It needed {state.heal_attempts} automatic repair(s) to get there.")
+        print("\nNext steps:")
+        print(f"  cd {output_directory}")
+        print("  docker compose up --build")
+    elif state.error_log:
+        print("\nValidation: failed. The generated project needs attention.\n")
+        print(state.error_log)
 
 
 def _load_spec_from_file(path_text: str) -> ProjectSpec:
@@ -73,10 +104,18 @@ def _load_spec_from_file(path_text: str) -> ProjectSpec:
     return ProjectSpec.model_validate_json(spec_path.read_text(encoding="utf-8"))
 
 
+def _build_llm_or_none(settings: Settings) -> StructuredLLM | None:
+    """Return a language-model client, or None when no key is configured."""
+    if not settings.has_api_key():
+        return None
+    return LLMClient(settings)
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the VibeStack command-line interface.
 
-    Returns a process exit code: 0 on success, non-zero on error.
+    Returns a process exit code: 0 on success, non-zero on error or when the
+    generated project fails validation.
     """
     parser = _build_argument_parser()
     args = parser.parse_args(argv)
@@ -85,8 +124,14 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("provide a prompt, or use --from-spec to load a specification")
 
     output_directory = Path(args.out)
+    settings = Settings()
 
-    # Generating from a saved specification needs no model access at all.
+    validator = None
+    if not args.no_validate:
+        validator = build_validator(SandboxKind(args.sandbox))
+
+    # Generating from a saved specification needs no model access. A key is
+    # still used for repairs if one happens to be configured.
     if args.from_spec:
         spec = _load_spec_from_file(args.from_spec)
         if args.spec_only:
@@ -94,11 +139,16 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         print(f"Generating '{spec.project_name}' from {args.from_spec}", file=sys.stderr)
-        state = generate_from_spec(spec, output_directory)
+        state = generate_from_spec(
+            spec,
+            output_directory,
+            validator=validator,
+            llm=_build_llm_or_none(settings),
+            on_progress=_print_progress,
+        )
         _report_results(state, output_directory)
-        return 0
+        return 0 if (validator is None or state.build_passed) else 1
 
-    settings = Settings()
     if not settings.has_api_key():
         print(
             "Error: OPENROUTER_API_KEY is not set.\n"
@@ -116,6 +166,12 @@ def main(argv: list[str] | None = None) -> int:
         print(spec.model_dump_json(indent=2))
         return 0
 
-    state = run_pipeline(args.prompt, llm, output_directory)
+    state = run_pipeline(
+        args.prompt,
+        llm,
+        output_directory,
+        validator=validator,
+        on_progress=_print_progress,
+    )
     _report_results(state, output_directory)
-    return 0
+    return 0 if (validator is None or state.build_passed) else 1
