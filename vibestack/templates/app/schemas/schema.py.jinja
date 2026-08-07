@@ -1,0 +1,51 @@
+"""Request and response schemas for {{ entity_name }}."""
+
+{% if needs_datetime %}
+from datetime import datetime
+
+{% endif %}
+from pydantic import BaseModel, ConfigDict
+
+
+class {{ class_name }}Base(BaseModel):
+    """Fields that clients may send when creating or updating a {{ entity_name }}."""
+
+{% for line in base_field_lines %}
+    {{ line }}
+{% endfor %}
+{% if not base_field_lines %}
+    pass
+{% endif %}
+
+
+class {{ class_name }}Create({{ class_name }}Base):
+    """Fields accepted when creating a {{ entity_name }}."""
+
+{% for line in create_extra_field_lines %}
+    {{ line }}
+{% endfor %}
+{% if not create_extra_field_lines %}
+    pass
+{% endif %}
+
+
+class {{ class_name }}Update(BaseModel):
+    """Fields accepted when updating a {{ entity_name }}. All are optional."""
+
+{% for line in update_field_lines %}
+    {{ line }}
+{% endfor %}
+{% if not update_field_lines %}
+    pass
+{% endif %}
+
+
+class {{ class_name }}Read({{ class_name }}Base):
+    """Fields returned to clients."""
+
+    # from_attributes lets Pydantic build this schema straight from an ORM object.
+    model_config = ConfigDict(from_attributes=True)
+
+{% for line in read_extra_field_lines %}
+    {{ line }}
+{% endfor %}

@@ -4,8 +4,9 @@
 prompt into a runnable, containerized **FastAPI** backend — then *proves it builds*,
 *fixes itself* when it doesn't, and *records the rationale* behind every file.
 
-> **Status:** Phase 0 (skeleton) complete — configuration, the typed `ProjectSpec` /
-> `GenerationState` models, an LLM client, and a CLI that parses a prompt into a spec.
+> **Status:** Phase 1 complete — VibeStack generates a complete, working FastAPI backend
+> (SQLAlchemy models, Pydantic schemas, CRUD routers, JWT auth, Docker, and tests) from a
+> specification. The generated project boots and passes its own test suite.
 > See [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) for the full architecture and roadmap.
 
 ## The problem
@@ -59,23 +60,38 @@ pip install -e ".[dev]"
 # 2. Configure your model access
 cp .env.example .env        # then add your OpenRouter API key to .env
 
-# 3. Parse a natural-language prompt into a ProjectSpec
-python -m vibestack "a blog API with users, posts and JWT auth"
+# 3. Generate a backend from a natural-language prompt
+python -m vibestack "a blog API with users, posts and JWT auth" --out ./generated-backend
 
 # 4. Run the tests (no API key or network required)
 python -m pytest
 ```
 
-Phase 0 prints the structured `ProjectSpec` as JSON. Generation, validation, and packaging
-arrive in the following phases.
+**No API key?** Generation itself is deterministic and needs no model access — you can
+generate straight from a specification file:
+
+```bash
+python -m vibestack --from-spec examples/blog_api.json --out ./generated-backend
+cd generated-backend && docker compose up --build
+```
+
+Add `--spec-only` to print the `ProjectSpec` as JSON without generating files.
+
+### Where the language model is used
+
+The model is used for the one job it is genuinely better at — reading informal prose and
+turning it into a structured `ProjectSpec`. Code generation itself is deterministic and
+template-driven, so the same spec always produces the same files, generation costs nothing,
+and every output is unit-testable. The model returns in Phase 2 to *diagnose and repair*
+build failures.
 
 ## Roadmap
 
 | Phase | Goal | Status |
 |---|---|---|
 | P0 | Skeleton — spec parsing + CLI | ✅ Done |
-| P1 | Happy-path generation (CRUD + auth) | Next |
-| P2 | Docker validation + self-healing loop | Planned |
+| P1 | Happy-path generation (CRUD + auth) | ✅ Done |
+| P2 | Docker validation + self-healing loop | Next |
 | P3 | Change ledger + review council + API | Planned |
 | P4 | Polish, benchmark, demo | Planned |
 

@@ -1,0 +1,15 @@
+"""Database models.
+
+Importing every model here ensures SQLAlchemy knows about all tables before
+``Base.metadata.create_all`` runs.
+"""
+
+{% for model in models %}
+from app.models.{{ model.module_name }} import {{ model.class_name }}
+{% endfor %}
+
+__all__ = [
+{% for model in models %}
+    "{{ model.class_name }}",
+{% endfor %}
+]
