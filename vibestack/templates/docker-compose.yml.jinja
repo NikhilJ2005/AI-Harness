@@ -1,0 +1,31 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://{{ project_slug }}:change-me@db:5432/{{ project_slug }}
+{% if has_auth %}
+      SECRET_KEY: change-me-before-deploying
+{% endif %}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: {{ project_slug }}
+      POSTGRES_PASSWORD: change-me
+      POSTGRES_DB: {{ project_slug }}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # Wait until Postgres can actually accept queries before starting the app.
+      test: ["CMD-SHELL", "pg_isready -U {{ project_slug }}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

@@ -1,0 +1,38 @@
+"""Smoke tests for {{ project_title }}.
+
+These run against the real application using FastAPI's test client, so they
+confirm the app imports, the routes are registered, and the database tables can
+be created.
+"""
+
+from fastapi.testclient import TestClient
+
+from app.main import app
+
+client = TestClient(app)
+
+
+def test_health_check_returns_ok():
+    """The health endpoint should report that the service is up."""
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_openapi_schema_is_available():
+    """The generated OpenAPI document should be served."""
+    response = client.get("/openapi.json")
+
+    assert response.status_code == 200
+    assert "paths" in response.json()
+{% for resource in resources %}
+
+
+def test_list_{{ resource.plural }}_returns_a_list():
+    """Listing {{ resource.entity_name }} records should succeed on an empty database."""
+    response = client.get("/{{ resource.route_prefix }}")
+
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+{% endfor %}

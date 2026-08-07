@@ -1,0 +1,29 @@
+"""Database engine, session factory, and the declarative base class."""
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
+
+from app.config import settings
+
+
+def build_connect_arguments(database_url: str) -> dict[str, object]:
+    """Return driver-specific connection arguments.
+
+    SQLite refuses to reuse a connection across threads unless we opt in, and
+    FastAPI serves requests from a thread pool. Other databases need nothing.
+    """
+    if database_url.startswith("sqlite"):
+        return {"check_same_thread": False}
+    return {}
+
+
+engine = create_engine(
+    settings.database_url,
+    connect_args=build_connect_arguments(settings.database_url),
+)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+class Base(DeclarativeBase):
+    """Base class that every ORM model inherits from."""

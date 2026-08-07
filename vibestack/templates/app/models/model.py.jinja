@@ -1,0 +1,35 @@
+"""Database model for {{ entity_name }}."""
+
+{% if needs_datetime %}
+from datetime import datetime, timezone
+
+{% endif %}
+from sqlalchemy import {{ sqlalchemy_imports }}
+{% if relationship_lines %}
+from sqlalchemy.orm import relationship
+{% endif %}
+
+from app.database import Base
+
+{% if needs_datetime %}
+
+def utc_now() -> datetime:
+    """Return the current time in UTC, used as a column default."""
+    return datetime.now(timezone.utc)
+
+{% endif %}
+
+class {{ class_name }}(Base):
+    """The {{ table_name }} table."""
+
+    __tablename__ = "{{ table_name }}"
+
+{% for line in column_lines %}
+    {{ line }}
+{% endfor %}
+{% if relationship_lines %}
+
+{% for line in relationship_lines %}
+    {{ line }}
+{% endfor %}
+{% endif %}

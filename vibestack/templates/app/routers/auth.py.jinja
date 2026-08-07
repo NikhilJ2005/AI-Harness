@@ -1,0 +1,100 @@
+"""Authentication routes: register, log in, and read the current user."""
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
+
+from app.dependencies import get_db
+from app.models.{{ user_module }} import {{ user_class }}
+from app.schemas.{{ user_module }} import {{ user_class }}Create, {{ user_class }}Read
+from app.security import (
+    create_access_token,
+    hash_password,
+    read_subject_from_token,
+    verify_password,
+)
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+# tokenUrl tells the interactive docs where to exchange credentials for a token.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+
+def find_user_by_login(login_value: str, db: Session) -> {{ user_class }} | None:
+    """Look up a user by the field used to log in."""
+    return (
+        db.query({{ user_class }})
+        .filter({{ user_class }}.{{ login_field }} == login_value)
+        .first()
+    )
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> {{ user_class }}:
+    """Resolve the signed-in user from the request's bearer token."""
+    credentials_error = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    login_value = read_subject_from_token(token)
+    if login_value is None:
+        raise credentials_error
+
+    user = find_user_by_login(login_value, db)
+    if user is None:
+        raise credentials_error
+    return user
+
+
+@router.post("/register", response_model={{ user_class }}Read, status_code=status.HTTP_201_CREATED)
+def register(
+    payload: {{ user_class }}Create,
+    db: Session = Depends(get_db),
+) -> {{ user_class }}:
+    """Create a new account."""
+    if find_user_by_login(payload.{{ login_field }}, db) is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="An account with that {{ login_field }} already exists",
+        )
+
+    # The plain password never reaches the database; only its hash is stored.
+    submitted_values = payload.model_dump(exclude={"password"})
+    user = {{ user_class }}(
+        **submitted_values,
+        {{ password_field }}=hash_password(payload.password),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.post("/login")
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    """Exchange a {{ login_field }} and password for an access token."""
+    user = find_user_by_login(form_data.username, db)
+    if user is None or not verify_password(form_data.password, user.{{ password_field }}):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect {{ login_field }} or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token = create_access_token(subject=getattr(user, "{{ login_field }}"))
+    return {"access_token": token, "token_type": "bearer"}
+
+
+@router.get("/me", response_model={{ user_class }}Read)
+def read_current_user(
+    current_user: {{ user_class }} = Depends(get_current_user),
+) -> {{ user_class }}:
+    """Return the account belonging to the supplied token."""
+    return current_user

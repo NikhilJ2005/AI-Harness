@@ -1,0 +1,89 @@
+"""API routes for {{ entity_name }}."""
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.dependencies import get_db
+from app.models.{{ module_name }} import {{ class_name }}
+from app.schemas.{{ module_name }} import (
+    {{ class_name }}Create,
+    {{ class_name }}Read,
+    {{ class_name }}Update,
+)
+
+router = APIRouter(prefix="/{{ route_prefix }}", tags=["{{ route_prefix }}"])
+
+DEFAULT_PAGE_SIZE = 50
+
+
+def get_{{ singular }}_or_404(record_id: int, db: Session) -> {{ class_name }}:
+    """Look up one {{ entity_name }} by id, or raise a 404 error."""
+    record = db.get({{ class_name }}, record_id)
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="{{ entity_name }} not found",
+        )
+    return record
+
+
+@router.post("", response_model={{ class_name }}Read, status_code=status.HTTP_201_CREATED)
+def create_{{ singular }}(
+    payload: {{ class_name }}Create,
+    db: Session = Depends(get_db),
+) -> {{ class_name }}:
+    """Create a new {{ entity_name }}."""
+    record = {{ class_name }}(**payload.model_dump())
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+@router.get("", response_model=list[{{ class_name }}Read])
+def list_{{ plural }}(
+    skip: int = 0,
+    limit: int = DEFAULT_PAGE_SIZE,
+    db: Session = Depends(get_db),
+) -> list[{{ class_name }}]:
+    """Return a page of {{ entity_name }} records."""
+    return db.query({{ class_name }}).offset(skip).limit(limit).all()
+
+
+@router.get("/{record_id}", response_model={{ class_name }}Read)
+def read_{{ singular }}(
+    record_id: int,
+    db: Session = Depends(get_db),
+) -> {{ class_name }}:
+    """Return a single {{ entity_name }} by id."""
+    return get_{{ singular }}_or_404(record_id, db)
+
+
+@router.patch("/{record_id}", response_model={{ class_name }}Read)
+def update_{{ singular }}(
+    record_id: int,
+    payload: {{ class_name }}Update,
+    db: Session = Depends(get_db),
+) -> {{ class_name }}:
+    """Update the supplied fields of a {{ entity_name }}."""
+    record = get_{{ singular }}_or_404(record_id, db)
+
+    # exclude_unset means only the fields the client actually sent are applied.
+    submitted_values = payload.model_dump(exclude_unset=True)
+    for field_name, new_value in submitted_values.items():
+        setattr(record, field_name, new_value)
+
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+@router.delete("/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_{{ singular }}(
+    record_id: int,
+    db: Session = Depends(get_db),
+) -> None:
+    """Delete a {{ entity_name }}."""
+    record = get_{{ singular }}_or_404(record_id, db)
+    db.delete(record)
+    db.commit()

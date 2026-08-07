@@ -1,0 +1,29 @@
+# Stage 1: install dependencies into a virtual environment.
+FROM python:3.11-slim AS builder
+
+WORKDIR /app
+
+COPY pyproject.toml ./
+RUN python -m venv /opt/venv \
+    && /opt/venv/bin/pip install --no-cache-dir --upgrade pip \
+    && /opt/venv/bin/pip install --no-cache-dir .
+
+# Stage 2: copy the environment and the application into a clean image.
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Run as a non-root user so the container has no more privileges than it needs.
+RUN useradd --create-home --uid 1000 appuser
+
+COPY --from=builder /opt/venv /opt/venv
+COPY app ./app
+
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1
+
+USER appuser
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

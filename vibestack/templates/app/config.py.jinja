@@ -1,0 +1,22 @@
+"""Settings for {{ project_name }}, read from environment variables."""
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Configuration values, overridable through the environment or a .env file."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    database_url: str = "sqlite:///./{{ project_slug }}.db"
+{% if has_auth %}
+    secret_key: str = "change-me-before-deploying"
+    access_token_expire_minutes: int = 60
+{% endif %}
+
+
+settings = Settings()
