@@ -4,9 +4,10 @@
 prompt into a runnable, containerized **FastAPI** backend — then *proves it builds*,
 *fixes itself* when it doesn't, and *records the rationale* behind every file.
 
-> **Status:** Phase 2 complete — VibeStack generates a complete FastAPI backend, then
-> **proves it works** by building and running it behind three validation gates, and
-> **repairs it automatically** when a gate fails.
+> **Status:** Phase 3 complete — VibeStack generates a FastAPI backend, **proves it works**
+> behind three validation gates, **repairs it automatically** when one fails, **reviews it**
+> from five perspectives, and **explains every change** in a persistent audit trail —
+> through a CLI or a web UI.
 > See [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) for the full architecture and roadmap.
 
 ## The problem
@@ -116,6 +117,46 @@ python -m vibestack --from-spec examples/blog_api.json --no-validate         # s
 
 Validation runs without an API key — you just get a diagnosis instead of a repair.
 
+## Web UI and API
+
+```bash
+uvicorn vibestack.api:create_app --factory --reload
+```
+
+Open <http://localhost:8000> to generate a backend from the browser, watch it validate and
+heal live, read the change ledger, and download the project. Interactive API docs are at
+`/docs`. The page ships with a built-in example spec, so the whole demo runs with **no API
+key**.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/generate` | Start a generation from a prompt or a spec |
+| `GET /api/jobs/{id}` | Job status and live progress |
+| `GET /api/jobs/{id}/ledger` | **The audit trail** — every file and why it exists |
+| `GET /api/jobs/{id}/review` | What the review council found |
+| `GET /api/jobs/{id}/download` | The project as a zip |
+
+## The change ledger
+
+Every file carries a recorded reason, every automatic repair says what it fixed, and the
+whole trail is persisted to SQLite so it outlives the process:
+
+```
+[plan    ] (specification)      Added 'password_hash' to User to store passwords.
+[schema  ] app/models/user.py   Defines the users table so User records can be stored.
+[api     ] app/schemas/user.py  Validates User requests, keeping internal columns out of the API.
+[self-heal] app/models/post.py  undefined_name: restored the missing Text import.
+```
+
+## The review council
+
+After a project passes its gates, five independent reviewers — architecture, security,
+testing, performance, maintainability — read it **in parallel** and report findings by
+severity. This is the one place VibeStack runs work concurrently, and the exception is
+deliberate: reviewing finished code is genuinely independent work, unlike generation. The
+reviewers are read-only, findings that name a file which does not exist are discarded, and
+one failing reviewer never discards the other four.
+
 ## Roadmap
 
 | Phase | Goal | Status |
@@ -123,8 +164,8 @@ Validation runs without an API key — you just get a diagnosis instead of a rep
 | P0 | Skeleton — spec parsing + CLI | ✅ Done |
 | P1 | Happy-path generation (CRUD + auth) | ✅ Done |
 | P2 | Docker validation + self-healing loop | ✅ Done |
-| P3 | Change ledger + review council + API | Next |
-| P4 | Polish, benchmark, demo | Planned |
+| P3 | Change ledger + review council + API | ✅ Done |
+| P4 | Polish, benchmark, demo | Next |
 
 See [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) for the full detail, component choices,
 and team task board.

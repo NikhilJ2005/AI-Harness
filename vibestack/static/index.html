@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VibeStack</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #171a23;
+      --border: #262b38;
+      --text: #e6e8ee;
+      --muted: #949bb0;
+      --accent: #5b9dff;
+      --ok: #46c98b;
+      --warn: #e0b341;
+      --bad: #e46f6f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    header {
+      padding: 28px 24px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    h1 { margin: 0 0 6px; font-size: 22px; letter-spacing: -0.01em; }
+    header p { margin: 0; color: var(--muted); font-size: 14px; }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      gap: 20px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+    }
+    .panel h2 { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
+    textarea {
+      width: 100%;
+      min-height: 74px;
+      padding: 11px 12px;
+      background: #10131a;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font: inherit;
+      resize: vertical;
+    }
+    textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+    .row { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+    button {
+      padding: 9px 16px;
+      background: var(--accent);
+      color: #08121f;
+      border: 0;
+      border-radius: 8px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .hint { color: var(--muted); font-size: 13px; }
+    .status { font-size: 13px; color: var(--muted); }
+    ul { list-style: none; margin: 0; padding: 0; }
+    .progress li {
+      padding: 5px 0 5px 16px;
+      border-left: 2px solid var(--border);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .entry {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .entry:last-child { border-bottom: 0; }
+    .entry .path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+    .entry .why { color: var(--muted); font-size: 13px; margin-top: 2px; }
+    .tag {
+      display: inline-block;
+      padding: 1px 7px;
+      margin-right: 8px;
+      border-radius: 999px;
+      background: #222839;
+      color: var(--accent);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .sev-high { color: var(--bad); }
+    .sev-medium { color: var(--warn); }
+    .sev-low, .sev-info { color: var(--muted); }
+    .verdict { font-weight: 600; }
+    .verdict.pass { color: var(--ok); }
+    .verdict.fail { color: var(--bad); }
+    .hidden { display: none; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>VibeStack</h1>
+    <p>Describe a backend. Get a FastAPI project that is built, tested, and explained.</p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>What should the backend do?</h2>
+      <textarea id="prompt" placeholder="a blog API with users, posts, comments and JWT auth"></textarea>
+      <div class="row">
+        <button id="generate">Generate</button>
+        <button id="example" class="secondary">Use example spec (no API key)</button>
+        <span id="status" class="status"></span>
+      </div>
+      <p class="hint" id="model-hint"></p>
+    </section>
+
+    <section class="panel hidden" id="progress-panel">
+      <h2>Progress</h2>
+      <ul class="progress" id="progress"></ul>
+      <div class="row">
+        <span id="verdict"></span>
+        <button id="download" class="secondary hidden">Download project</button>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="ledger-panel">
+      <h2>Change ledger — what was created, and why</h2>
+      <ul id="ledger"></ul>
+    </section>
+
+    <section class="panel hidden" id="review-panel">
+      <h2>Review council</h2>
+      <ul id="review"></ul>
+    </section>
+  </main>
+
+  <script>
+    const POLL_INTERVAL_MS = 1200;
+
+    const elements = {
+      prompt: document.getElementById("prompt"),
+      generate: document.getElementById("generate"),
+      example: document.getElementById("example"),
+      status: document.getElementById("status"),
+      modelHint: document.getElementById("model-hint"),
+      progressPanel: document.getElementById("progress-panel"),
+      progress: document.getElementById("progress"),
+      verdict: document.getElementById("verdict"),
+      download: document.getElementById("download"),
+      ledgerPanel: document.getElementById("ledger-panel"),
+      ledger: document.getElementById("ledger"),
+      reviewPanel: document.getElementById("review-panel"),
+      review: document.getElementById("review"),
+    };
+
+    let currentJobId = null;
+
+    async function loadHealth() {
+      const response = await fetch("/api/health");
+      const health = await response.json();
+      elements.modelHint.textContent = health.model_configured
+        ? "A model is configured, so prompts and the review council are available."
+        : "No API key is set. Prompts need one, but the example spec works offline.";
+    }
+
+    function show(element) { element.classList.remove("hidden"); }
+    function hide(element) { element.classList.add("hidden"); }
+
+    function resetPanels() {
+      elements.progress.innerHTML = "";
+      elements.ledger.innerHTML = "";
+      elements.review.innerHTML = "";
+      elements.verdict.textContent = "";
+      hide(elements.ledgerPanel);
+      hide(elements.reviewPanel);
+      hide(elements.download);
+      show(elements.progressPanel);
+    }
+
+    async function startGeneration(body) {
+      resetPanels();
+      elements.generate.disabled = true;
+      elements.example.disabled = true;
+      elements.status.textContent = "Starting...";
+
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const problem = await response.json().catch(() => ({ detail: "Request failed" }));
+        elements.status.textContent = problem.detail || "Request failed";
+        elements.generate.disabled = false;
+        elements.example.disabled = false;
+        return;
+      }
+
+      const job = await response.json();
+      currentJobId = job.job_id;
+      pollJob();
+    }
+
+    async function pollJob() {
+      const response = await fetch(`/api/jobs/${currentJobId}`);
+      const job = await response.json();
+
+      elements.status.textContent = job.status;
+      elements.progress.innerHTML = job.progress
+        .map((line) => `<li>${escapeHtml(line)}</li>`)
+        .join("");
+
+      if (job.status === "completed" || job.status === "failed") {
+        finishJob(job);
+        return;
+      }
+      setTimeout(pollJob, POLL_INTERVAL_MS);
+    }
+
+    async function finishJob(job) {
+      elements.generate.disabled = false;
+      elements.example.disabled = false;
+
+      if (job.status === "failed") {
+        elements.verdict.innerHTML =
+          `<span class="verdict fail">Failed:</span> ${escapeHtml(job.error)}`;
+        return;
+      }
+
+      const healed = job.heal_attempts > 0
+        ? ` after ${job.heal_attempts} automatic repair(s)`
+        : "";
+      elements.verdict.innerHTML = job.build_passed
+        ? `<span class="verdict pass">Validated</span> — ${job.file_count} files, builds and passes its tests${healed}.`
+        : `<span class="verdict fail">Validation failed</span> — ${job.file_count} files generated.`;
+
+      show(elements.download);
+      await loadLedger();
+      await loadReview();
+    }
+
+    async function loadLedger() {
+      const response = await fetch(`/api/jobs/${currentJobId}/ledger`);
+      const entries = await response.json();
+      if (!entries.length) return;
+
+      elements.ledger.innerHTML = entries
+        .map(
+          (entry) => `
+            <li class="entry">
+              <div><span class="tag">${escapeHtml(entry.stage)}</span><span class="path">${escapeHtml(entry.file_path)}</span></div>
+              <div class="why">${escapeHtml(entry.rationale)}</div>
+            </li>`
+        )
+        .join("");
+      show(elements.ledgerPanel);
+    }
+
+    async function loadReview() {
+      const response = await fetch(`/api/jobs/${currentJobId}/review`);
+      const review = await response.json();
+      if (!review.count) return;
+
+      elements.review.innerHTML = review.findings
+        .map(
+          (finding) => `
+            <li class="entry">
+              <div>
+                <span class="tag">${escapeHtml(finding.lens)}</span>
+                <span class="sev-${escapeHtml(finding.severity)}">${escapeHtml(finding.severity)}</span>
+                <span class="path">${escapeHtml(finding.file_path)}</span>
+              </div>
+              <div>${escapeHtml(finding.summary)}</div>
+              <div class="why">${escapeHtml(finding.recommendation)}</div>
+            </li>`
+        )
+        .join("");
+      show(elements.reviewPanel);
+    }
+
+    function escapeHtml(value) {
+      const node = document.createElement("div");
+      node.textContent = value === null || value === undefined ? "" : String(value);
+      return node.innerHTML;
+    }
+
+    elements.generate.addEventListener("click", () => {
+      const prompt = elements.prompt.value.trim();
+      if (!prompt) {
+        elements.status.textContent = "Describe the backend first.";
+        return;
+      }
+      startGeneration({ prompt });
+    });
+
+    elements.example.addEventListener("click", () => {
+      startGeneration({ spec: EXAMPLE_SPEC });
+    });
+
+    elements.download.addEventListener("click", () => {
+      window.location.href = `/api/jobs/${currentJobId}/download`;
+    });
+
+    // A ready-made specification, so the demo runs with no API key at all.
+    const EXAMPLE_SPEC = {
+      project_name: "blog_api",
+      description: "A blog API with users, posts, and comments.",
+      entities: [
+        {
+          name: "User",
+          fields: [
+            { name: "id", type: "int", primary_key: true, nullable: false },
+            { name: "email", type: "str", unique: true, nullable: false },
+            { name: "display_name", type: "str", nullable: false },
+            { name: "created_at", type: "datetime", nullable: false },
+          ],
+          relationships: [
+            { target_entity: "Post", type: "one_to_many", back_populates: "author" },
+          ],
+        },
+        {
+          name: "Post",
+          fields: [
+            { name: "id", type: "int", primary_key: true, nullable: false },
+            { name: "title", type: "str", nullable: false },
+            { name: "body", type: "text", nullable: true },
+            { name: "published", type: "bool", nullable: false },
+            { name: "created_at", type: "datetime", nullable: false },
+          ],
+          relationships: [],
+        },
+      ],
+      auth: { enabled: true, strategy: "jwt", endpoints: ["register", "login", "me"] },
+      features: ["pagination"],
+    };
+
+    loadHealth();
+  </script>
+</body>
+</html>
