@@ -15,6 +15,7 @@ from vibestack.review import CouncilReport
 from vibestack.spec import ProjectSpec
 from vibestack.stages.council import run_council
 from vibestack.stages.parse import parse_prompt_to_spec
+from vibestack.usage import collect_usage, summarise
 from vibestack.validation import Validator
 
 MAX_CONCURRENT_JOBS = 2
@@ -41,6 +42,8 @@ class Job(BaseModel):
     build_passed: bool = False
     heal_attempts: int = 0
     review_counts: dict[str, int] = Field(default_factory=dict)
+    cost_usd: float = 0.0
+    total_tokens: int = 0
     error: str = ""
 
 
@@ -133,6 +136,7 @@ class JobManager:
 
             report = self._review_if_possible(job_id, state)
             self._store.save_run(job_id, state, prompt=prompt, report=report)
+            usage = summarise(state.usage)
 
             self._update(
                 job_id,
@@ -141,6 +145,8 @@ class JobManager:
                 build_passed=state.build_passed,
                 heal_attempts=state.heal_attempts,
                 review_counts=report.count_by_severity() if report else {},
+                cost_usd=round(usage.cost_usd, 6),
+                total_tokens=usage.prompt_tokens + usage.completion_tokens,
             )
             self._add_progress(job_id, "Done.")
 
@@ -161,6 +167,7 @@ class JobManager:
             self._add_progress(job_id, f"Review could not be completed: {error}")
             return None
 
+        collect_usage(state, self._llm)
         self._add_progress(
             job_id, f"Review complete: {len(report.findings)} finding(s)."
         )

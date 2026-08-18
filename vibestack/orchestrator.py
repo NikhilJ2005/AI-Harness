@@ -9,6 +9,7 @@ from vibestack.llm_protocol import StructuredLLM
 from vibestack.spec import ProjectSpec
 from vibestack.stages.parse import parse_prompt_to_spec
 from vibestack.state import GenerationState
+from vibestack.usage import collect_usage
 from vibestack.validation import Validator
 from vibestack.workspace import write_workspace
 
@@ -29,7 +30,10 @@ def generate_from_spec(
 
     if validator is not None:
         validate_and_heal(state, output_directory, validator, llm, on_progress)
-        save_checkpoint(state, output_directory)
+
+    if llm is not None:
+        collect_usage(state, llm)
+    save_checkpoint(state, output_directory)
 
     return state
 

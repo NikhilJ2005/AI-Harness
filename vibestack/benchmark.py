@@ -14,6 +14,7 @@ from vibestack.config import Settings
 from vibestack.healing import validate_and_heal
 from vibestack.llm_protocol import StructuredLLM
 from vibestack.spec import ProjectSpec
+from vibestack.usage import collect_usage, summarise
 from vibestack.validation import Validator
 from vibestack.validators import SandboxKind, build_validator
 from vibestack.workspace import write_workspace
@@ -36,6 +37,8 @@ class CaseResult:
     heal_attempts: int = 0
     failed_gate: str = ""
     duration_seconds: float = 0.0
+    cost_usd: float = 0.0
+    total_tokens: int = 0
     error: str = ""
 
 
@@ -73,6 +76,14 @@ class BenchmarkReport:
             return 0.0
         return statistics.mean(result.heal_attempts for result in self.results)
 
+    def total_cost(self) -> float:
+        return sum(result.cost_usd for result in self.results)
+
+    def average_cost(self) -> float:
+        if not self.results:
+            return 0.0
+        return statistics.mean(result.cost_usd for result in self.results)
+
 
 def load_specs(spec_directory: Path) -> list[tuple[str, ProjectSpec]]:
     cases: list[tuple[str, ProjectSpec]] = []
@@ -108,6 +119,12 @@ def run_case(
             validation = validate_and_heal(state, project_directory, validator, llm)
             result.validated = validation.passed
             result.heal_attempts = state.heal_attempts
+
+            if llm is not None:
+                collect_usage(state, llm)
+                usage = summarise(state.usage)
+                result.cost_usd = usage.cost_usd
+                result.total_tokens = usage.prompt_tokens + usage.completion_tokens
             if validation.failed_gate is not None:
                 result.failed_gate = validation.failed_gate.value
 
@@ -167,19 +184,21 @@ def format_markdown(report: BenchmarkReport) -> str:
         f"- Average generation and validation time: **{report.average_duration():.2f}s**",
         f"- Average files per project: **{report.average_files():.1f}**",
         f"- Average repair attempts: **{report.average_heal_attempts():.2f}**",
+        _cost_line(report),
         f"- Sandbox: {report.sandbox}",
         f"- Self-healing: {'enabled' if report.healing_enabled else 'not exercised (no API key)'}",
         "",
-        "| Specification | Files | Validated | Repairs | Time (s) | Notes |",
-        "|---|---|---|---|---|---|",
+        "| Specification | Files | Validated | Repairs | Time (s) | Cost | Notes |",
+        "|---|---|---|---|---|---|---|",
     ]
 
     for result in report.results:
         verdict = "yes" if result.validated else "no"
         note = result.error or result.failed_gate or ""
+        cost = f"${result.cost_usd:.4f}" if result.cost_usd else "-"
         lines.append(
             f"| `{result.name}` | {result.file_count} | {verdict} | "
-            f"{result.heal_attempts} | {result.duration_seconds} | {note} |"
+            f"{result.heal_attempts} | {result.duration_seconds} | {cost} | {note} |"
         )
 
     plan_notes = _collect_plan_notes(report)
@@ -199,6 +218,18 @@ def format_markdown(report: BenchmarkReport) -> str:
                 lines.append(f"- `{name}`: {note}")
 
     return "\n".join(lines) + "\n"
+
+
+def _cost_line(report: BenchmarkReport) -> str:
+    """Report cost only when something was actually measured."""
+    if not report.healing_enabled:
+        return "- Cost: not measured (no API key, so no model calls were made)"
+    if report.total_cost() == 0:
+        return "- Cost: **$0.00** — free models report no price"
+    return (
+        f"- Average cost per generation: **${report.average_cost():.4f}** "
+        f"(total ${report.total_cost():.4f})"
+    )
 
 
 def _collect_plan_notes(report: BenchmarkReport) -> list[tuple[str, list[str]]]:

@@ -103,6 +103,24 @@ turning it into a structured `ProjectSpec`, and diagnosing a build failure well 
 repair it. Code generation itself is deterministic and template-driven, so the same spec
 always produces the same files, generation costs nothing, and every output is unit-testable.
 
+### Checking your models
+
+OpenRouter's free tier changes without notice — the free Qwen and Llama endpoints were
+withdrawn in August 2026 — so verify before you depend on one:
+
+```bash
+python scripts/model_preflight.py    # every tier reachable and honouring structured output?
+python scripts/live_check.py         # one real generation, with cost per stage
+```
+
+Every call records its tokens and cost, grouped by stage (`parse`, `repair`, `review`), and
+the totals appear on the job and in the benchmark. If a model refuses tool calling, the
+client falls back through JSON and markdown-JSON modes rather than failing.
+
+Free-model requests are capped at **50/day** under $10 of credit and **1,000/day** above it,
+while one generation makes roughly **6–9 requests**. Holding $10 of credit is the difference
+between about six generations a day and over a hundred.
+
 ## Validation and self-healing
 
 Every generated project is built and run before you get it. Three gates run in order,
