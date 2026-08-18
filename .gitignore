@@ -22,3 +22,4 @@ env/
 # VibeStack working data (checkpoints, generated output)
 .vibestack/
 generated-backend/
+vibestack-workspace/
