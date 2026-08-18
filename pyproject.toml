@@ -35,3 +35,6 @@ packages = ["vibestack"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+    "slow: runs the real validation gates over every benchmark specification",
+]

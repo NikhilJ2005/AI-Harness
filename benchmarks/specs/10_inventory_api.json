@@ -1,0 +1,31 @@
+{
+  "project_name": "inventory_api",
+  "description": "A warehouse inventory API using every supported field type and no relationships.",
+  "entities": [
+    {
+      "name": "Item",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "sku", "type": "str", "unique": true, "nullable": false },
+        { "name": "notes", "type": "text", "nullable": true },
+        { "name": "quantity", "type": "int", "nullable": false },
+        { "name": "unit_cost", "type": "float", "nullable": false },
+        { "name": "discontinued", "type": "bool", "nullable": false },
+        { "name": "created_at", "type": "datetime", "nullable": false },
+        { "name": "updated_at", "type": "datetime", "nullable": false }
+      ],
+      "relationships": []
+    },
+    {
+      "name": "Warehouse",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "code", "type": "str", "unique": true, "nullable": false },
+        { "name": "city", "type": "str", "nullable": false }
+      ],
+      "relationships": []
+    }
+  ],
+  "auth": { "enabled": false, "strategy": "jwt", "endpoints": [] },
+  "features": ["pagination"]
+}

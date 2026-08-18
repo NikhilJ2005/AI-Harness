@@ -251,13 +251,29 @@ def _plan_relationships(plans: list[EntityPlan], notes: list[str]) -> None:
             )
 
 
-def _find_account_plan(plans: list[EntityPlan]) -> EntityPlan | None:
-    """Return the entity that represents a user account, if there is one."""
+def _find_account_plan(plans: list[EntityPlan]) -> tuple[EntityPlan | None, str]:
+    """Return the entity that represents a user account, and how it was found.
+
+    Names are tried first, because "User" or "Account" is a clear signal. But
+    plenty of real specifications call it Customer, Attendee, or Chef, so an
+    entity that carries a login field is treated as the account too. Matching on
+    shape rather than only on vocabulary is what stops authentication being
+    silently skipped for a perfectly ordinary specification.
+
+    Returns ``(plan, reason)`` where reason is "name", "login-field", or "" when
+    nothing matched.
+    """
     for candidate_name in ACCOUNT_ENTITY_NAMES:
         for plan in plans:
             if candidate_name in to_snake_case(plan.names.entity_name):
-                return plan
-    return None
+                return plan, "name"
+
+    for plan in plans:
+        for candidate_field in LOGIN_FIELD_CANDIDATES:
+            if _has_field(plan.entity, candidate_field):
+                return plan, "login-field"
+
+    return None, ""
 
 
 def _plan_authentication(
@@ -272,7 +288,13 @@ def _plan_authentication(
     if not spec.auth.enabled:
         return None
 
-    account_plan = _find_account_plan(plans)
+    account_plan, matched_by = _find_account_plan(plans)
+    if account_plan is not None and matched_by == "login-field":
+        notes.append(
+            f"Treated {account_plan.entity.name} as the account entity for "
+            "authentication, because it carries a login field."
+        )
+
     if account_plan is None:
         notes.append(
             "Authentication was requested but no user entity was found, "

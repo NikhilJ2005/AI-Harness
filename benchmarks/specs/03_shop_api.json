@@ -1,0 +1,54 @@
+{
+  "project_name": "shop_api",
+  "description": "An online shop API with customers, products, orders, and order lines.",
+  "entities": [
+    {
+      "name": "Customer",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "email", "type": "str", "unique": true, "nullable": false },
+        { "name": "full_name", "type": "str", "nullable": false },
+        { "name": "created_at", "type": "datetime", "nullable": false }
+      ],
+      "relationships": [
+        { "target_entity": "Order", "type": "one_to_many", "back_populates": "customer" }
+      ]
+    },
+    {
+      "name": "Product",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "name", "type": "str", "nullable": false },
+        { "name": "description", "type": "text", "nullable": true },
+        { "name": "price", "type": "float", "nullable": false },
+        { "name": "in_stock", "type": "bool", "nullable": false }
+      ],
+      "relationships": [
+        { "target_entity": "OrderLine", "type": "one_to_many", "back_populates": "product" }
+      ]
+    },
+    {
+      "name": "Order",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "status", "type": "str", "nullable": false },
+        { "name": "total", "type": "float", "nullable": false },
+        { "name": "created_at", "type": "datetime", "nullable": false }
+      ],
+      "relationships": [
+        { "target_entity": "OrderLine", "type": "one_to_many", "back_populates": "order" }
+      ]
+    },
+    {
+      "name": "OrderLine",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "quantity", "type": "int", "nullable": false },
+        { "name": "unit_price", "type": "float", "nullable": false }
+      ],
+      "relationships": []
+    }
+  ],
+  "auth": { "enabled": true, "strategy": "jwt", "endpoints": ["register", "login", "me"] },
+  "features": ["pagination", "search"]
+}

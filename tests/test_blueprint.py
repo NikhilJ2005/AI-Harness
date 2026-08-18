@@ -201,3 +201,54 @@ def test_auth_without_a_user_entity_is_disabled_with_a_note():
 
     assert blueprint.auth is None
     assert any("no user entity" in note for note in blueprint.notes)
+
+
+def test_account_entity_is_found_by_its_login_field():
+    """An account called something other than "User" must still get auth.
+
+    Real specifications say Customer, Attendee, or Chef. Matching only on the
+    word "user" silently skipped authentication for all of them.
+    """
+    spec = ProjectSpec(
+        project_name="shop",
+        description="",
+        entities=[
+            Entity(
+                name="Customer",
+                fields=[
+                    EntityField(name="id", type=FieldType.INTEGER, primary_key=True),
+                    EntityField(name="email", type=FieldType.STRING, unique=True),
+                ],
+            )
+        ],
+    )
+
+    blueprint = build_blueprint(spec)
+
+    assert blueprint.auth is not None
+    assert blueprint.auth.entity_plan.names.class_name == "Customer"
+    assert blueprint.auth.login_field == "email"
+    # The choice is explained, because it was inferred rather than stated.
+    assert any("account entity" in note for note in blueprint.notes)
+
+
+def test_a_named_user_entity_wins_over_one_with_a_login_field():
+    """An explicit User entity is a stronger signal than a login field."""
+    spec = ProjectSpec(
+        project_name="shop",
+        description="",
+        entities=[
+            Entity(
+                name="Contact",
+                fields=[
+                    EntityField(name="id", type=FieldType.INTEGER, primary_key=True),
+                    EntityField(name="email", type=FieldType.STRING),
+                ],
+            ),
+            _user_entity(),
+        ],
+    )
+
+    blueprint = build_blueprint(spec)
+
+    assert blueprint.auth.entity_plan.names.class_name == "User"

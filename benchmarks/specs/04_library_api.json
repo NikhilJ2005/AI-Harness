@@ -1,0 +1,43 @@
+{
+  "project_name": "library_api",
+  "description": "A library lending API with members, books, and loans.",
+  "entities": [
+    {
+      "name": "Member",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "email", "type": "str", "unique": true, "nullable": false },
+        { "name": "name", "type": "str", "nullable": false },
+        { "name": "joined_at", "type": "datetime", "nullable": false }
+      ],
+      "relationships": [
+        { "target_entity": "Loan", "type": "one_to_many", "back_populates": "member" }
+      ]
+    },
+    {
+      "name": "Book",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "isbn", "type": "str", "unique": true, "nullable": false },
+        { "name": "title", "type": "str", "nullable": false },
+        { "name": "author", "type": "str", "nullable": false },
+        { "name": "available", "type": "bool", "nullable": false }
+      ],
+      "relationships": [
+        { "target_entity": "Loan", "type": "one_to_many", "back_populates": "book" }
+      ]
+    },
+    {
+      "name": "Loan",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "borrowed_at", "type": "datetime", "nullable": false },
+        { "name": "due_at", "type": "datetime", "nullable": false },
+        { "name": "returned", "type": "bool", "nullable": false }
+      ],
+      "relationships": []
+    }
+  ],
+  "auth": { "enabled": true, "strategy": "jwt", "endpoints": ["register", "login", "me"] },
+  "features": ["pagination"]
+}

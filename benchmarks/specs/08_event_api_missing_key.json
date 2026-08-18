@@ -1,0 +1,39 @@
+{
+  "project_name": "event_api",
+  "description": "An event booking API. The Ticket entity has no primary key, which the planner must add.",
+  "entities": [
+    {
+      "name": "Attendee",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "email", "type": "str", "unique": true, "nullable": false },
+        { "name": "name", "type": "str", "nullable": false }
+      ],
+      "relationships": [
+        { "target_entity": "Ticket", "type": "one_to_many", "back_populates": "attendee" }
+      ]
+    },
+    {
+      "name": "Event",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "title", "type": "str", "nullable": false },
+        { "name": "venue", "type": "str", "nullable": false },
+        { "name": "starts_at", "type": "datetime", "nullable": false }
+      ],
+      "relationships": [
+        { "target_entity": "Ticket", "type": "one_to_many", "back_populates": "event" }
+      ]
+    },
+    {
+      "name": "Ticket",
+      "fields": [
+        { "name": "seat", "type": "str", "nullable": true },
+        { "name": "price", "type": "float", "nullable": false }
+      ],
+      "relationships": []
+    }
+  ],
+  "auth": { "enabled": true, "strategy": "jwt", "endpoints": ["register", "login", "me"] },
+  "features": []
+}

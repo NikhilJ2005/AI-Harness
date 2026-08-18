@@ -1,0 +1,42 @@
+{
+  "project_name": "blog_api",
+  "description": "A blog API with users, posts, and comments.",
+  "entities": [
+    {
+      "name": "User",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "email", "type": "str", "unique": true, "nullable": false },
+        { "name": "display_name", "type": "str", "nullable": false },
+        { "name": "created_at", "type": "datetime", "nullable": false }
+      ],
+      "relationships": [
+        { "target_entity": "Post", "type": "one_to_many", "back_populates": "author" }
+      ]
+    },
+    {
+      "name": "Post",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "title", "type": "str", "nullable": false },
+        { "name": "body", "type": "text", "nullable": true },
+        { "name": "published", "type": "bool", "nullable": false },
+        { "name": "created_at", "type": "datetime", "nullable": false }
+      ],
+      "relationships": [
+        { "target_entity": "Comment", "type": "one_to_many", "back_populates": "post" }
+      ]
+    },
+    {
+      "name": "Comment",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "body", "type": "text", "nullable": false },
+        { "name": "created_at", "type": "datetime", "nullable": false }
+      ],
+      "relationships": []
+    }
+  ],
+  "auth": { "enabled": true, "strategy": "jwt", "endpoints": ["register", "login", "me"] },
+  "features": ["pagination"]
+}
