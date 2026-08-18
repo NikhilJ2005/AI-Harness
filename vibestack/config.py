@@ -36,6 +36,27 @@ class Settings(BaseSettings):
 
     request_timeout_seconds: int = 60
 
+    # SQLite locally, Postgres in production. The same code serves both.
+    database_url: str = "sqlite:///./vibestack.db"
+
+    # Signs the access tokens. Must be set to something private before deploying.
+    secret_key: str = "change-me-before-deploying"
+    access_token_expire_minutes: int = 60 * 24
+
+    def resolved_database_url(self) -> str:
+        """Normalise the scheme Railway hands out.
+
+        Railway supplies DATABASE_URL as "postgresql://", but SQLAlchemy 2 with
+        psycopg 3 wants "postgresql+psycopg://". Rewriting it here means the
+        platform's spelling never has to be correct.
+        """
+        url = self.database_url
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+        return url
+
     def has_api_key(self) -> bool:
         return bool(self.openrouter_api_key.strip())
 

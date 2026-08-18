@@ -68,6 +68,16 @@
     }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
     button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    input[type="email"], input[type="password"] {
+      padding: 9px 11px;
+      background: #10131a;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font: inherit;
+      min-width: 220px;
+    }
+    input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
     .hint { color: var(--muted); font-size: 13px; }
     .status { font-size: 13px; color: var(--muted); }
     ul { list-style: none; margin: 0; padding: 0; }
@@ -112,7 +122,18 @@
   </header>
 
   <main>
-    <section class="panel">
+    <section class="panel" id="auth-panel">
+      <h2>Sign in</h2>
+      <div class="row">
+        <input id="email" type="email" placeholder="you@example.com" />
+        <input id="password" type="password" placeholder="password (8+ characters)" />
+        <button id="signin">Sign in</button>
+        <button id="signup" class="secondary">Create account</button>
+        <span id="auth-status" class="status"></span>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="work-panel">
       <h2>What should the backend do?</h2>
       <textarea id="prompt" placeholder="a blog API with users, posts, comments and JWT auth"></textarea>
       <div class="row">
@@ -148,6 +169,13 @@
 
     const elements = {
       prompt: document.getElementById("prompt"),
+      authPanel: document.getElementById("auth-panel"),
+      workPanel: document.getElementById("work-panel"),
+      email: document.getElementById("email"),
+      password: document.getElementById("password"),
+      authStatus: document.getElementById("auth-status"),
+      signin: document.getElementById("signin"),
+      signup: document.getElementById("signup"),
       generate: document.getElementById("generate"),
       example: document.getElementById("example"),
       status: document.getElementById("status"),
@@ -163,6 +191,68 @@
     };
 
     let currentJobId = null;
+    let token = localStorage.getItem("vibestack_token");
+
+    function authHeaders(extra) {
+      const headers = Object.assign({}, extra || {});
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      return headers;
+    }
+
+    async function authenticatedFetch(url, options) {
+      const settings = Object.assign({}, options || {});
+      settings.headers = authHeaders(settings.headers);
+      const response = await fetch(url, settings);
+      if (response.status === 401) {
+        signOut("Your session expired. Sign in again.");
+      }
+      return response;
+    }
+
+    function signOut(message) {
+      token = null;
+      localStorage.removeItem("vibestack_token");
+      show(elements.authPanel);
+      hide(elements.workPanel);
+      elements.authStatus.textContent = message || "";
+    }
+
+    async function submitCredentials(path) {
+      const email = elements.email.value.trim();
+      const password = elements.password.value;
+      if (!email || !password) {
+        elements.authStatus.textContent = "Enter an email and password.";
+        return;
+      }
+
+      const response = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const problem = await response.json().catch(() => ({}));
+        elements.authStatus.textContent = detailText(problem) || "Sign in failed.";
+        return;
+      }
+
+      token = (await response.json()).access_token;
+      localStorage.setItem("vibestack_token", token);
+      elements.authStatus.textContent = "";
+      elements.password.value = "";
+      hide(elements.authPanel);
+      show(elements.workPanel);
+    }
+
+    function detailText(problem) {
+      const detail = problem && problem.detail;
+      if (!detail) return "";
+      if (typeof detail === "string") return detail;
+      // FastAPI validation errors come back as a list.
+      if (Array.isArray(detail) && detail.length) return detail[0].msg || "";
+      return "";
+    }
 
     async function loadHealth() {
       const response = await fetch("/api/health");
@@ -192,7 +282,7 @@
       elements.example.disabled = true;
       elements.status.textContent = "Starting...";
 
-      const response = await fetch("/api/generate", {
+      const response = await authenticatedFetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -212,7 +302,7 @@
     }
 
     async function pollJob() {
-      const response = await fetch(`/api/jobs/${currentJobId}`);
+      const response = await authenticatedFetch(`/api/jobs/${currentJobId}`);
       const job = await response.json();
 
       elements.status.textContent = job.status;
@@ -250,7 +340,7 @@
     }
 
     async function loadLedger() {
-      const response = await fetch(`/api/jobs/${currentJobId}/ledger`);
+      const response = await authenticatedFetch(`/api/jobs/${currentJobId}/ledger`);
       const entries = await response.json();
       if (!entries.length) return;
 
@@ -267,7 +357,7 @@
     }
 
     async function loadReview() {
-      const response = await fetch(`/api/jobs/${currentJobId}/review`);
+      const response = await authenticatedFetch(`/api/jobs/${currentJobId}/review`);
       const review = await response.json();
       if (!review.count) return;
 
@@ -307,8 +397,19 @@
       startGeneration({ spec: EXAMPLE_SPEC });
     });
 
-    elements.download.addEventListener("click", () => {
-      window.location.href = `/api/jobs/${currentJobId}/download`;
+    elements.download.addEventListener("click", async () => {
+      const response = await authenticatedFetch(`/api/jobs/${currentJobId}/download`);
+      if (!response.ok) return;
+
+      // The request needs an auth header, so the file is fetched and then
+      // handed to the browser rather than linked to directly.
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "generated-backend.zip";
+      link.click();
+      URL.revokeObjectURL(url);
     });
 
     // A ready-made specification, so the demo runs with no API key at all.
@@ -344,7 +445,27 @@
       features: ["pagination"],
     };
 
-    loadHealth();
+    elements.signin.addEventListener("click", () => submitCredentials("/api/auth/login"));
+    elements.signup.addEventListener("click", () => submitCredentials("/api/auth/register"));
+    elements.password.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") submitCredentials("/api/auth/login");
+    });
+
+    async function start() {
+      await loadHealth();
+      if (!token) return;
+
+      // A stored token may have expired while the tab was closed.
+      const me = await fetch("/api/auth/me", { headers: authHeaders() });
+      if (me.ok) {
+        hide(elements.authPanel);
+        show(elements.workPanel);
+      } else {
+        signOut();
+      }
+    }
+
+    start();
   </script>
 </body>
 </html>

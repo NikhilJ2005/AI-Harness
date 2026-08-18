@@ -111,3 +111,27 @@ def test_checkpoint_is_written_beside_the_project(tmp_path):
 
 def test_loading_without_a_checkpoint_returns_none(tmp_path):
     assert load_checkpoint(tmp_path) is None
+
+
+def test_the_validator_does_not_leak_our_settings_into_the_project(monkeypatch, tmp_path):
+    """A generated project reads DATABASE_URL too.
+
+    Inheriting ours pointed the project under test at VibeStack's own database,
+    so its tests failed for a reason that had nothing to do with the generated
+    code. Found running the real server, not in the tests.
+    """
+    from vibestack.validators.subprocess_validator import build_child_environment
+
+    monkeypatch.setenv("DATABASE_URL", "sqlite:////var/vibestack/app.db")
+    monkeypatch.setenv("SECRET_KEY", "the-server-secret")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-secret")
+    monkeypatch.setenv("PATH", "/usr/bin")
+
+    environment = build_child_environment(tmp_path)
+
+    assert "DATABASE_URL" not in environment
+    assert "SECRET_KEY" not in environment
+    assert "OPENROUTER_API_KEY" not in environment
+    # Everything else still comes through, or the child cannot run at all.
+    assert environment["PATH"] == "/usr/bin"
+    assert environment["PYTHONPATH"] == str(tmp_path)
