@@ -1,17 +1,4 @@
-"""The self-healing loop: validate, diagnose, repair, and try again.
-
-This is the part of VibeStack that makes generated code trustworthy. Anything
-can produce plausible-looking code; the difference here is that the project is
-actually built and run, and a failure is treated as a signal to fix rather than
-as a result to hand back to the user.
-
-Two guarantees shape the design:
-
-* the loop always terminates — a circuit breaker caps the number of attempts, so
-  it cannot spend tokens indefinitely on a problem it is not solving;
-* a failure is always explained — when the breaker trips, the user gets the
-  category, the gate, and the log rather than silence.
-"""
+"""The self-healing loop: validate, diagnose, repair, and try again."""
 
 from collections.abc import Callable
 from pathlib import Path
@@ -31,7 +18,6 @@ ProgressCallback = Callable[[str], None]
 
 
 def _report(on_progress: ProgressCallback | None, message: str) -> None:
-    """Send a progress message to the caller, if it asked for them."""
     if on_progress is not None:
         on_progress(message)
 
@@ -39,11 +25,7 @@ def _report(on_progress: ProgressCallback | None, message: str) -> None:
 def apply_patch(
     state: GenerationState, project_directory: Path, patch: FilePatch, reason: str
 ) -> None:
-    """Write a repair to both the state and the project on disk.
-
-    Both have to change: the state is what the next repair attempt reads, and
-    the files on disk are what the next validation run executes.
-    """
+    """Writes to both state and disk: state feeds the next repair, disk feeds the next validation."""
     state.generated_files[patch.file_path] = patch.new_content
 
     destination = project_directory / patch.file_path
@@ -58,7 +40,6 @@ def apply_patch(
 
 
 def build_diagnostic(state: GenerationState, result: ValidationResult) -> str:
-    """Describe a failure the loop could not fix, for the user to act on."""
     category = classify_build_error(result.logs)
     gate_name = result.failed_gate.value if result.failed_gate else "unknown"
 

@@ -1,18 +1,4 @@
-"""Measure how well VibeStack generates backends across many specifications.
-
-Run it with:
-
-    python -m vibestack.benchmark
-
-Every specification in ``benchmarks/specs`` is generated into a temporary
-directory and put through the validation gates. The result is a table of what
-worked, what did not, and how long it took.
-
-Because generation is deterministic, this benchmark needs no API key and gives
-the same answer every time — which is what makes it a benchmark rather than an
-anecdote. Supplying a key additionally exercises the self-healing loop, and the
-report says which mode was used.
-"""
+"""Measure how well VibeStack generates backends across many specifications."""
 
 import argparse
 import json
@@ -68,7 +54,6 @@ class BenchmarkReport:
         return sum(1 for result in self.results if result.validated)
 
     def success_rate(self) -> float:
-        """Return the share of specifications that produced a working project."""
         if not self.results:
             return 0.0
         return self.validated_count() / len(self.results)
@@ -90,7 +75,6 @@ class BenchmarkReport:
 
 
 def load_specs(spec_directory: Path) -> list[tuple[str, ProjectSpec]]:
-    """Read every specification file, in filename order."""
     cases: list[tuple[str, ProjectSpec]] = []
     for spec_path in sorted(spec_directory.glob("*.json")):
         spec = ProjectSpec.model_validate_json(spec_path.read_text(encoding="utf-8"))
@@ -104,11 +88,7 @@ def run_case(
     validator: Validator,
     llm: StructuredLLM | None,
 ) -> CaseResult:
-    """Generate and validate one specification.
-
-    Each case runs in its own temporary directory, so the cases cannot affect
-    each other and nothing is left behind.
-    """
+    """Generate and validate one spec in its own temporary directory."""
     result = CaseResult(name=name, project_name=spec.project_name)
     started_at = time.monotonic()
 
@@ -166,7 +146,6 @@ def run_benchmark(
 
 
 def _describe(result: CaseResult) -> str:
-    """Return a one-line description of a case result."""
     if result.error:
         return f"error: {result.error}"
     if result.validated:
@@ -179,7 +158,6 @@ def _describe(result: CaseResult) -> str:
 
 
 def format_markdown(report: BenchmarkReport) -> str:
-    """Render the report as a markdown document."""
     lines = [
         "# Benchmark results",
         "",
@@ -224,7 +202,6 @@ def format_markdown(report: BenchmarkReport) -> str:
 
 
 def _collect_plan_notes(report: BenchmarkReport) -> list[tuple[str, list[str]]]:
-    """Return the planning notes for cases that had any."""
     return [
         (result.name, result.plan_notes)
         for result in report.results
@@ -233,7 +210,6 @@ def _collect_plan_notes(report: BenchmarkReport) -> list[tuple[str, list[str]]]:
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
-    """Create the command-line argument parser."""
     parser = argparse.ArgumentParser(
         prog="vibestack.benchmark",
         description="Measure generation success across many specifications.",
@@ -268,7 +244,6 @@ def build_argument_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run the benchmark from the command line."""
     parser = build_argument_parser()
     args = parser.parse_args(argv)
 

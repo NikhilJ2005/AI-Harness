@@ -1,8 +1,4 @@
-"""Generate packaging, container, and documentation files.
-
-This tool runs last: it needs to know whether authentication was generated so it
-can include the right dependencies in ``pyproject.toml``.
-"""
+"""Generate packaging, container, and documentation files."""
 
 from vibestack.blueprint import Blueprint
 from vibestack.tools.context import ToolContext
@@ -26,7 +22,6 @@ AUTH_DEPENDENCIES = [
 
 
 def build_dependency_list(blueprint: Blueprint) -> list[str]:
-    """Return the dependencies the generated project needs."""
     dependencies = list(BASE_DEPENDENCIES)
     if blueprint.auth is not None:
         dependencies.extend(AUTH_DEPENDENCIES)
@@ -34,7 +29,6 @@ def build_dependency_list(blueprint: Blueprint) -> list[str]:
 
 
 def build_resource_list(blueprint: Blueprint) -> list[dict[str, str]]:
-    """Return a simple description of each resource, for docs and tests."""
     return [
         {
             "entity_name": plan.names.entity_name,
@@ -46,7 +40,6 @@ def build_resource_list(blueprint: Blueprint) -> list[dict[str, str]]:
 
 
 def run(context: ToolContext) -> None:
-    """Generate packaging, Docker, documentation, and smoke-test files."""
     blueprint = context.blueprint
     has_auth = blueprint.auth is not None
     resources = build_resource_list(blueprint)

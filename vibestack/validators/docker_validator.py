@@ -1,17 +1,4 @@
-"""Run the validation gates inside a container.
-
-This is the validator to use for code you do not trust. It gives the generated
-project its own filesystem and process space, denies it network access while the
-gates run, and caps the CPU, memory, and process count it can consume.
-
-It also validates one thing the subprocess validator cannot: building the image
-exercises the generated Dockerfile and its dependency list, so a broken
-Dockerfile or an invented package is caught here rather than by the user.
-
-Note on the isolation boundary: containers share the host kernel, so this is a
-strong boundary but not a complete one. Hardening it further (gVisor, or a
-microVM such as Firecracker) is future work.
-"""
+"""Run the validation gates inside a container."""
 
 import shutil
 import subprocess
@@ -40,7 +27,6 @@ CONTAINER_LIMITS = [
 
 
 def docker_is_available() -> bool:
-    """Return True when a usable Docker daemon is reachable."""
     if shutil.which("docker") is None:
         return False
 
@@ -64,11 +50,9 @@ class DockerValidator:
         self._timeout_seconds = timeout_seconds
 
     def describe(self) -> str:
-        """Return a short description, for printing to the user."""
         return "docker (isolated)"
 
     def validate(self, project_directory: Path) -> ValidationResult:
-        """Build the image, then run every gate inside a container."""
         base_tag = f"vibestack-app-{project_directory.name}".lower()
         check_tag = f"{base_tag}-check"
 
@@ -86,7 +70,7 @@ class DockerValidator:
             self._remove_images([check_tag, base_tag])
 
     def _build_image(self, project_directory: Path, tag: str) -> ValidationResult | None:
-        """Build the project's own Dockerfile. Returns a result only on failure."""
+        """Returns a result only on failure, None when the build succeeded."""
         completed = self._run_command(
             ["docker", "build", "--tag", tag, "."],
             working_directory=project_directory,
@@ -100,7 +84,6 @@ class DockerValidator:
     def _build_check_image(
         self, project_directory: Path, base_tag: str, check_tag: str
     ) -> ValidationResult | None:
-        """Add the test tools on top of the built image."""
         dockerfile_path = project_directory / CHECK_DOCKERFILE_NAME
         dockerfile_path.write_text(
             CHECK_DOCKERFILE_TEMPLATE.format(base_image=base_tag),
@@ -128,7 +111,6 @@ class DockerValidator:
         return None
 
     def _run_gates(self, image_tag: str) -> ValidationResult:
-        """Run the gate runner inside a container built from the image."""
         command = [
             "docker", "run", "--rm",
             *CONTAINER_LIMITS,
@@ -144,7 +126,7 @@ class DockerValidator:
     def _run_command(
         self, command: list[str], working_directory: Path | None
     ) -> subprocess.CompletedProcess:
-        """Run a docker command, turning a timeout into an ordinary failure."""
+        """Turns a timeout into an ordinary failure rather than an exception."""
         try:
             return subprocess.run(
                 command,
@@ -162,7 +144,6 @@ class DockerValidator:
             )
 
     def _remove_images(self, tags: list[str]) -> None:
-        """Delete the images we built, ignoring any failure to do so."""
         for tag in tags:
             subprocess.run(
                 ["docker", "image", "rm", "--force", tag],

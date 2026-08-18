@@ -1,16 +1,4 @@
-"""The generation agent: one reasoning thread that routes through its tools.
-
-This is the core of VibeStack's architecture. Rather than handing each part of
-the project to a separate autonomous sub-agent, a single agent owns one shared
-:class:`~vibestack.state.GenerationState` and calls specialised tools in
-dependency order.
-
-The reason is practical. Backend generation is dependency-heavy: the schema
-constrains the API, which constrains authentication. Sub-agents with private
-context windows cannot see one another's decisions, so they drift and produce
-files that do not match. Keeping one shared context removes that failure mode
-entirely — and costs far fewer tokens.
-"""
+"""The generation agent: one reasoning thread that routes through its tools."""
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -25,11 +13,7 @@ from vibestack.tools.context import ToolContext
 
 @dataclass(frozen=True)
 class Tool:
-    """One capability the agent can call.
-
-    Tools are plain functions rather than classes: each one reads the shared
-    context and adds files to it, which keeps them easy to test in isolation.
-    """
+    """One capability the agent can call."""
 
     name: str
     description: str
@@ -37,12 +21,7 @@ class Tool:
 
 
 def build_default_tools() -> list[Tool]:
-    """Return the tools in the order the agent must call them.
-
-    The order encodes the dependency chain of a backend. Each tool relies on
-    decisions recorded by the ones before it, which is exactly why they share a
-    single context instead of running independently.
-    """
+    """The tools in the order they must run; the order is the dependency chain."""
     return [
         Tool(
             name="schema",
@@ -81,11 +60,7 @@ class GenerationAgent:
         self._tools = tools if tools is not None else build_default_tools()
 
     def run(self, spec: ProjectSpec) -> GenerationState:
-        """Generate a complete project from a specification.
-
-        Returns the state containing every generated file and a ledger entry
-        explaining why each one exists.
-        """
+        """Generate a project. Returns state holding every file and a ledger entry for each."""
         blueprint = build_blueprint(spec)
 
         # The blueprint's spec is used, not the caller's: planning may have added

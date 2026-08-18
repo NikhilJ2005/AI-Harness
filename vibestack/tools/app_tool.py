@@ -1,14 +1,9 @@
-"""Generate the application wiring: entry point, settings, and database setup.
-
-This tool runs after the routers because ``main.py`` has to register every
-router that the earlier tools produced.
-"""
+"""Generate the application wiring: entry point, settings, and database setup."""
 
 from vibestack.tools.context import ToolContext
 
 
 def run(context: ToolContext) -> None:
-    """Generate the files that tie the application together."""
     blueprint = context.blueprint
     has_auth = blueprint.auth is not None
 

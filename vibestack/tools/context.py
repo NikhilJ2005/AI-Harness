@@ -9,12 +9,7 @@ from vibestack.state import GenerationState
 
 @dataclass
 class ToolContext:
-    """Everything a tool needs, and the state it contributes to.
-
-    There is exactly one of these per generation run. Because every tool reads
-    the same blueprint and writes to the same state, the files they produce stay
-    consistent with one another.
-    """
+    """One per run. Every tool reads the same blueprint and writes the same state."""
 
     blueprint: Blueprint
     renderer: TemplateRenderer
@@ -22,7 +17,6 @@ class ToolContext:
     current_stage: str = "generate"
 
     def add_file(self, file_path: str, content: str, rationale: str) -> None:
-        """Record a generated file and why it was created."""
         self.state.generated_files[file_path] = content
         self.state.record_change(
             stage=self.current_stage,
@@ -37,6 +31,5 @@ class ToolContext:
         rationale: str,
         **context: object,
     ) -> None:
-        """Render a template and store the result as a generated file."""
         content = self.renderer.render(template_name, **context)
         self.add_file(file_path, content, rationale)

@@ -1,15 +1,9 @@
-"""Generate password hashing, token helpers, and the authentication routes.
-
-This tool runs after the schemas because the auth routes reuse the account
-entity's create and read schemas. It does nothing when the blueprint has no
-authentication plan.
-"""
+"""Generate password hashing, token helpers, and the authentication routes."""
 
 from vibestack.tools.context import ToolContext
 
 
 def run(context: ToolContext) -> None:
-    """Generate the security helpers and auth router, if auth is enabled."""
     auth_plan = context.blueprint.auth
     if auth_plan is None:
         return

@@ -1,13 +1,4 @@
-"""Runs the validation gates from inside a generated project.
-
-This script is copied into the project under test and executed there, either on
-the host or inside a container. It reports its findings as one JSON line on
-standard output, prefixed with a marker so the caller can pick it out from any
-other output the project produces.
-
-It deliberately has no dependency on VibeStack itself, because it runs in the
-generated project's environment, not ours.
-"""
+"""Runs the validation gates from inside a generated project."""
 
 import importlib
 import json
@@ -20,7 +11,6 @@ MAX_LOG_CHARACTERS = 4000
 
 
 def run_import_gate() -> tuple[bool, str]:
-    """Check that the application module imports without error."""
     try:
         importlib.import_module("app.main")
     except BaseException:
@@ -30,12 +20,7 @@ def run_import_gate() -> tuple[bool, str]:
 
 
 def run_boot_gate() -> tuple[bool, str]:
-    """Check that the application starts and answers its health check.
-
-    Building a test client runs the application's startup, which is where table
-    creation and router registration happen, so this catches far more than a
-    plain import does.
-    """
+    """Builds a test client, which runs start-up: table creation and route registration."""
     try:
         from fastapi.testclient import TestClient
 
@@ -55,7 +40,6 @@ def run_boot_gate() -> tuple[bool, str]:
 
 
 def run_tests_gate() -> tuple[bool, str]:
-    """Run the project's own test suite."""
     try:
         completed = subprocess.run(
             [sys.executable, "-m", "pytest", "-q"],
@@ -72,11 +56,7 @@ def run_tests_gate() -> tuple[bool, str]:
 
 
 def build_gate_list() -> list[tuple[str, object]]:
-    """Return the gates in the order they must run.
-
-    Cheapest and most fundamental first: there is no point running the test
-    suite if the application cannot even be imported.
-    """
+    """Cheapest first: no point running tests if the app cannot import."""
     return [
         ("import", run_import_gate),
         ("boot", run_boot_gate),
@@ -85,7 +65,6 @@ def build_gate_list() -> list[tuple[str, object]]:
 
 
 def main() -> int:
-    """Run each gate, stopping at the first failure, and report the outcome."""
     # The project directory must be importable as "app".
     if "" not in sys.path:
         sys.path.insert(0, "")

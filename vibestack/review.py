@@ -1,8 +1,4 @@
-"""What the review council looks for and what it reports.
-
-These models live apart from the council itself so that both the council and
-``GenerationState`` can use them without importing each other.
-"""
+"""What the review council looks for and what it reports."""
 
 from enum import Enum
 
@@ -10,12 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class ReviewLens(str, Enum):
-    """The perspectives a generated project is reviewed from.
-
-    Each lens is a separate reviewer with its own brief. They are deliberately
-    independent: an architecture reviewer should not be swayed by what the
-    security reviewer happened to notice first.
-    """
+    """The five review perspectives. Deliberately independent of each other."""
 
     ARCHITECTURE = "architecture"
     SECURITY = "security"
@@ -48,11 +39,7 @@ class ReviewFinding(BaseModel):
 
 
 class LensReview(BaseModel):
-    """What a single reviewer reported.
-
-    This is the shape the model is asked to return, so it excludes the lens
-    itself — the council knows which reviewer it asked.
-    """
+    """What one reviewer returns. Excludes the lens: the council knows who it asked."""
 
     findings: list[ReviewFinding] = Field(default_factory=list)
     overall_note: str = ""
@@ -66,7 +53,6 @@ class CouncilReport(BaseModel):
     failed_lenses: list[str] = Field(default_factory=list)
 
     def highest_severity(self) -> Severity | None:
-        """Return the worst severity present, or None when nothing was found."""
         for severity in SEVERITY_ORDER:
             for finding in self.findings:
                 if finding.severity is severity:
@@ -74,7 +60,6 @@ class CouncilReport(BaseModel):
         return None
 
     def count_by_severity(self) -> dict[str, int]:
-        """Return how many findings there are at each severity."""
         counts: dict[str, int] = {}
         for finding in self.findings:
             counts[finding.severity.value] = counts.get(finding.severity.value, 0) + 1

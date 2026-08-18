@@ -1,15 +1,4 @@
-"""Command-line entry point for VibeStack.
-
-Two ways to run a generation:
-
-* from a natural-language prompt, which uses the language model to build the
-  specification first;
-* from a specification file, which needs no API key and always produces the
-  same output — useful for demos, tests, and offline work.
-
-Generated projects are validated by default: they are built and run, and any
-failure is repaired automatically where possible.
-"""
+"""Command-line entry point for VibeStack."""
 
 import argparse
 import sys
@@ -28,7 +17,6 @@ DEFAULT_OUTPUT_DIRECTORY = "generated-backend"
 
 
 def _build_argument_parser() -> argparse.ArgumentParser:
-    """Create the command-line argument parser."""
     parser = argparse.ArgumentParser(
         prog="vibestack",
         description="Generate a FastAPI backend from a natural-language description.",
@@ -73,12 +61,10 @@ def _build_argument_parser() -> argparse.ArgumentParser:
 
 
 def _print_progress(message: str) -> None:
-    """Show a progress message from the validation and healing loop."""
     print(f"  {message}", file=sys.stderr)
 
 
 def _report_results(state: GenerationState, output_directory: Path) -> None:
-    """Print a summary of what was generated and whether it works."""
     print(f"\nGenerated {len(state.generated_files)} files in {output_directory}")
 
     print("\nWhat was created and why:")
@@ -99,24 +85,18 @@ def _report_results(state: GenerationState, output_directory: Path) -> None:
 
 
 def _load_spec_from_file(path_text: str) -> ProjectSpec:
-    """Read a specification from a JSON file."""
     spec_path = Path(path_text)
     return ProjectSpec.model_validate_json(spec_path.read_text(encoding="utf-8"))
 
 
 def _build_llm_or_none(settings: Settings) -> StructuredLLM | None:
-    """Return a language-model client, or None when no key is configured."""
     if not settings.has_api_key():
         return None
     return LLMClient(settings)
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run the VibeStack command-line interface.
-
-    Returns a process exit code: 0 on success, non-zero on error or when the
-    generated project fails validation.
-    """
+    """Returns an exit code: non-zero on error or failed validation."""
     parser = _build_argument_parser()
     args = parser.parse_args(argv)
 

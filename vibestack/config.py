@@ -1,19 +1,10 @@
-"""Application configuration.
-
-All settings are read from environment variables (or a local ``.env`` file) so
-that secrets like the API key never live in the source tree. See
-``.env.example`` for the full list of supported variables.
-"""
+"""Application configuration."""
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Runtime configuration for VibeStack.
-
-    Field names map directly to environment variables (case-insensitive), so the
-    field ``openrouter_api_key`` is filled from ``OPENROUTER_API_KEY``.
-    """
+    """Configuration, read from the environment."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -36,5 +27,4 @@ class Settings(BaseSettings):
     request_timeout_seconds: int = 60
 
     def has_api_key(self) -> bool:
-        """Return True when an OpenRouter API key has been configured."""
         return bool(self.openrouter_api_key.strip())

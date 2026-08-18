@@ -1,9 +1,4 @@
-"""Generate the Pydantic schemas and CRUD routers.
-
-This tool runs after the models because it mirrors their columns. Reading the
-same blueprint is what guarantees a router refers to the exact class name and
-fields the model tool produced.
-"""
+"""Generate the Pydantic schemas and CRUD routers."""
 
 from vibestack.blueprint import AUTO_TIMESTAMP_FIELDS, Blueprint, EntityPlan
 from vibestack.spec import EntityField, FieldType
@@ -12,18 +7,13 @@ from vibestack.tools.field_types import PYTHON_TYPE_NAMES
 
 
 def build_field_line(name: str, python_type: str, optional: bool) -> str:
-    """Return one annotated attribute line for a Pydantic model."""
     if optional:
         return f"{name}: {python_type} | None = None"
     return f"{name}: {python_type}"
 
 
 def is_client_supplied(field: EntityField) -> bool:
-    """Return True when clients provide this field themselves.
-
-    Primary keys and automatic timestamps are set by the database, so they are
-    returned to clients but never accepted from them.
-    """
+    """False for primary keys and auto timestamps: returned to clients, never accepted."""
     if field.primary_key:
         return False
     if field.type is FieldType.DATETIME and field.name in AUTO_TIMESTAMP_FIELDS:
@@ -32,18 +22,13 @@ def is_client_supplied(field: EntityField) -> bool:
 
 
 def hidden_field_names(blueprint: Blueprint, plan: EntityPlan) -> set[str]:
-    """Return fields that must never appear in a request or response.
-
-    The password hash is the important case: it is stored, but exposing it would
-    leak credentials, so it is excluded from every schema.
-    """
+    """The password hash is stored but must never appear in a request or response."""
     if blueprint.auth is not None and blueprint.auth.entity_plan is plan:
         return {blueprint.auth.password_field}
     return set()
 
 
 def build_schema_context(blueprint: Blueprint, plan: EntityPlan) -> dict[str, object]:
-    """Assemble the template variables for one schema file."""
     hidden_fields = hidden_field_names(blueprint, plan)
 
     base_field_lines: list[str] = []
@@ -97,7 +82,6 @@ def build_schema_context(blueprint: Blueprint, plan: EntityPlan) -> dict[str, ob
 
 
 def run(context: ToolContext) -> None:
-    """Generate schema and router files for every entity."""
     blueprint = context.blueprint
 
     for plan in blueprint.entity_plans:

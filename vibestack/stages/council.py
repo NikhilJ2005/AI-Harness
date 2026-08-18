@@ -1,15 +1,4 @@
-"""The review council: five independent reviewers, read-only, run in parallel.
-
-This is the one place VibeStack runs work in parallel, and the exception is
-deliberate. Generation is dependency-heavy — the schema drives the API drives
-authentication — so it is done by a single agent with one shared context.
-Reviewing a *finished* project is the opposite: the five perspectives are
-genuinely independent, none of them writes anything, and each returns a short
-summary. That is exactly the shape parallel work suits.
-
-The reviewers never talk to each other and never modify the project. They report
-findings, and the orchestrator merges them.
-"""
+"""The review council: five independent reviewers, read-only, run in parallel."""
 
 from concurrent.futures import ThreadPoolExecutor
 
@@ -81,11 +70,7 @@ Rules:
 
 
 def select_files_for_review(state: GenerationState) -> dict[str, str]:
-    """Pick the files to show a reviewer, most important first.
-
-    Application code is prioritised over packaging, and the total is capped so
-    that a large project cannot make a review arbitrarily expensive.
-    """
+    """App code first, capped so a large project cannot make review unbounded."""
     all_paths = sorted(state.generated_files)
 
     ordered_paths: list[str] = []
@@ -114,7 +99,6 @@ def select_files_for_review(state: GenerationState) -> dict[str, str]:
 def build_review_prompt(
     lens: ReviewLens, files_to_show: dict[str, str], all_paths: list[str]
 ) -> str:
-    """Assemble the message for one reviewer."""
     sections = [
         f"Your perspective: {lens.value}.",
         LENS_BRIEFS[lens],
@@ -137,7 +121,6 @@ def review_with_lens(
     all_paths: list[str],
     llm: StructuredLLM,
 ) -> LensReview:
-    """Run one reviewer. Raises only if the model call itself fails."""
     return llm.structured_completion(
         system_prompt=REVIEW_SYSTEM_PROMPT,
         user_prompt=build_review_prompt(lens, files_to_show, all_paths),
@@ -150,11 +133,7 @@ def review_with_lens(
 def _keep_findings_about_real_files(
     review: LensReview, lens: ReviewLens, known_paths: set[str]
 ) -> list[ReviewFinding]:
-    """Drop findings that name a file which does not exist.
-
-    A reviewer occasionally invents a path. Those findings are discarded rather
-    than shown to the user, and the lens is corrected in case the model set it.
-    """
+    """Reviewers occasionally invent a path; those findings are dropped."""
     kept: list[ReviewFinding] = []
     for finding in review.findings:
         if finding.file_path not in known_paths:
@@ -168,11 +147,7 @@ def run_council(
     llm: StructuredLLM,
     lenses: list[ReviewLens] | None = None,
 ) -> CouncilReport:
-    """Review the generated project from every perspective, in parallel.
-
-    A reviewer that fails is recorded and skipped: one bad model call must not
-    lose the other four reviews.
-    """
+    """A failing reviewer is recorded and skipped, never losing the other four."""
     chosen_lenses = lenses if lenses is not None else list(ReviewLens)
     files_to_show = select_files_for_review(state)
     all_paths = sorted(state.generated_files)
@@ -211,5 +186,4 @@ def run_council(
 
 
 def _severity_sort_key(finding: ReviewFinding) -> int:
-    """Sort findings worst first."""
     return SEVERITY_ORDER.index(finding.severity)

@@ -1,13 +1,4 @@
-"""The build plan derived from a ``ProjectSpec``.
-
-Before any file is written, the whole project is planned once: names for every
-entity, which side of a relationship owns the foreign key, and which entity acts
-as the account for authentication. Every tool then reads this same blueprint.
-
-That single shared plan is what keeps the generated files consistent with each
-other — the model, the schema, and the router all learn the class name from the
-same place instead of each deciding for itself.
-"""
+"""The build plan derived from a ``ProjectSpec``."""
 
 from dataclasses import dataclass, field as dataclass_field
 
@@ -95,7 +86,6 @@ class Blueprint:
     notes: list[str] = dataclass_field(default_factory=list)
 
     def plan_for(self, entity_name: str) -> EntityPlan | None:
-        """Return the plan for an entity, matching names loosely."""
         wanted = to_snake_case(entity_name)
         for plan in self.entity_plans:
             if to_snake_case(plan.names.entity_name) == wanted:
@@ -103,7 +93,6 @@ class Blueprint:
         return None
 
     def router_modules(self) -> list[str]:
-        """Return the router module names to register on the application."""
         modules = [plan.names.module_name for plan in self.entity_plans]
         if self.auth is not None:
             # Authentication routes are registered first so they appear at the
@@ -113,7 +102,6 @@ class Blueprint:
 
 
 def build_entity_names(entity_name: str) -> EntityNames:
-    """Work out every spelling of an entity's name."""
     return EntityNames(
         entity_name=entity_name,
         class_name=to_class_name(entity_name),
@@ -126,7 +114,6 @@ def build_entity_names(entity_name: str) -> EntityNames:
 
 
 def _has_field(entity: Entity, field_name: str) -> bool:
-    """Return True when the entity already declares a field with this name."""
     for existing_field in entity.fields:
         if existing_field.name == field_name:
             return True
@@ -134,7 +121,6 @@ def _has_field(entity: Entity, field_name: str) -> bool:
 
 
 def _ensure_primary_key(entity: Entity, notes: list[str]) -> None:
-    """Give the entity an integer primary key if it does not have one."""
     for existing_field in entity.fields:
         if existing_field.primary_key:
             return
@@ -155,11 +141,7 @@ def _add_relationship_pair(
     other_attribute: str,
     owner_holds_foreign_key: bool,
 ) -> None:
-    """Record both sides of one relationship, plus the foreign key column.
-
-    ``owner_plan`` is the entity that declared the relationship. The side that
-    holds the foreign key is the "many" side of a one-to-many pair.
-    """
+    """The side holding the foreign key is the scalar side of the pair."""
     owner_plan.relationships.append(
         RelationshipAttribute(
             attribute_name=owner_attribute,
@@ -195,7 +177,6 @@ def _add_relationship_pair(
 
 
 def _attribute_is_free(plan: EntityPlan, attribute_name: str) -> bool:
-    """Return True when the name is not already used by a field or relationship."""
     if _has_field(plan.entity, attribute_name):
         return False
     for relationship in plan.relationships:
@@ -205,7 +186,6 @@ def _attribute_is_free(plan: EntityPlan, attribute_name: str) -> bool:
 
 
 def _plan_relationships(plans: list[EntityPlan], notes: list[str]) -> None:
-    """Turn the declared relationships into ORM attributes and foreign keys."""
     plans_by_name = {to_snake_case(plan.names.entity_name): plan for plan in plans}
 
     for owner_plan in plans:
@@ -252,17 +232,7 @@ def _plan_relationships(plans: list[EntityPlan], notes: list[str]) -> None:
 
 
 def _find_account_plan(plans: list[EntityPlan]) -> tuple[EntityPlan | None, str]:
-    """Return the entity that represents a user account, and how it was found.
-
-    Names are tried first, because "User" or "Account" is a clear signal. But
-    plenty of real specifications call it Customer, Attendee, or Chef, so an
-    entity that carries a login field is treated as the account too. Matching on
-    shape rather than only on vocabulary is what stops authentication being
-    silently skipped for a perfectly ordinary specification.
-
-    Returns ``(plan, reason)`` where reason is "name", "login-field", or "" when
-    nothing matched.
-    """
+    """Returns (plan, reason) where reason is 'name', 'login-field', or ''."""
     for candidate_name in ACCOUNT_ENTITY_NAMES:
         for plan in plans:
             if candidate_name in to_snake_case(plan.names.entity_name):
@@ -279,12 +249,7 @@ def _find_account_plan(plans: list[EntityPlan]) -> tuple[EntityPlan | None, str]
 def _plan_authentication(
     spec: ProjectSpec, plans: list[EntityPlan], notes: list[str]
 ) -> AuthPlan | None:
-    """Work out how authentication maps onto the account entity.
-
-    Returns None when authentication is disabled or no account entity exists.
-    The account entity is given the fields authentication needs if they are
-    missing, which is recorded as a note so the change is visible to the user.
-    """
+    """None when auth is off or no account entity exists. May add fields, each noted."""
     if not spec.auth.enabled:
         return None
 
@@ -350,11 +315,7 @@ def _plan_authentication(
 
 
 def build_blueprint(spec: ProjectSpec) -> Blueprint:
-    """Plan the whole project from its specification.
-
-    The incoming spec is copied first, so planning never modifies the caller's
-    object even though it may add fields such as a primary key.
-    """
+    """Works on a copy, so planning never mutates the caller's spec."""
     planned_spec = spec.model_copy(deep=True)
     notes: list[str] = []
 

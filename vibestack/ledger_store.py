@@ -1,14 +1,4 @@
-"""Persistent storage for the change ledger.
-
-The ledger is the part of VibeStack that makes generated code auditable: every
-file carries a recorded reason for existing, every automatic repair says what it
-fixed, and every review finding is kept alongside them. Holding that in memory
-would lose it the moment the process ends, so it is written to SQLite.
-
-Plain ``sqlite3`` is used rather than an ORM. The schema is three small tables
-that never change shape, so an ORM would add a dependency and a layer of
-indirection without removing any real work.
-"""
+"""Persistent storage for the change ledger."""
 
 import sqlite3
 from datetime import datetime, timezone
@@ -58,16 +48,11 @@ SCHEMA_STATEMENTS = [
 
 
 def _utc_now_iso() -> str:
-    """Return the current UTC time as an ISO-8601 string."""
     return datetime.now(timezone.utc).isoformat()
 
 
 class LedgerStore:
-    """Reads and writes the change ledger.
-
-    A connection is opened per operation rather than held open, so the store is
-    safe to use from the API's background threads without extra locking.
-    """
+    """Reads and writes the change ledger. Opens a connection per call, so it is thread-safe."""
 
     def __init__(self, database_path: Path) -> None:
         self._database_path = database_path
@@ -75,13 +60,11 @@ class LedgerStore:
         self._create_schema()
 
     def _connect(self) -> sqlite3.Connection:
-        """Open a connection that returns rows as dictionaries."""
         connection = sqlite3.connect(self._database_path)
         connection.row_factory = sqlite3.Row
         return connection
 
     def _create_schema(self) -> None:
-        """Create the tables if this is a new database."""
         with self._connect() as connection:
             for statement in SCHEMA_STATEMENTS:
                 connection.execute(statement)
@@ -93,11 +76,7 @@ class LedgerStore:
         prompt: str = "",
         report: CouncilReport | None = None,
     ) -> None:
-        """Write a complete run: its summary, its ledger, and its review.
-
-        Existing rows for the run are replaced, so saving the same run twice —
-        once after generation and again after review — is safe.
-        """
+        """Replaces any existing rows, so saving the same run twice is safe."""
         with self._connect() as connection:
             connection.execute(
                 """
@@ -154,7 +133,6 @@ class LedgerStore:
                 )
 
     def get_entries(self, run_id: str) -> list[LedgerEntry]:
-        """Return the ledger for one run, in the order it was recorded."""
         with self._connect() as connection:
             rows = connection.execute(
                 """
@@ -177,7 +155,6 @@ class LedgerStore:
         ]
 
     def get_findings(self, run_id: str) -> list[ReviewFinding]:
-        """Return the review findings for one run."""
         with self._connect() as connection:
             rows = connection.execute(
                 """
@@ -210,7 +187,6 @@ class LedgerStore:
         return dict(row) if row is not None else None
 
     def list_runs(self, limit: int = 50) -> list[dict]:
-        """Return recent runs, newest first."""
         with self._connect() as connection:
             rows = connection.execute(
                 "SELECT * FROM runs ORDER BY created_at DESC LIMIT ?", (limit,)

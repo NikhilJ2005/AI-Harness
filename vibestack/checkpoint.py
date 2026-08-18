@@ -1,10 +1,4 @@
-"""Saving and restoring the state of a generation run.
-
-The whole run lives in one ``GenerationState``, so a checkpoint is simply that
-object written to disk as JSON. Saving after each healing attempt means an
-interrupted run can be resumed instead of started again, and it leaves a record
-of what the state looked like when something went wrong.
-"""
+"""Saving and restoring the state of a generation run."""
 
 from pathlib import Path
 
@@ -15,12 +9,10 @@ CHECKPOINT_FILE_NAME = "checkpoint.json"
 
 
 def checkpoint_path(project_directory: Path) -> Path:
-    """Return the file a project's checkpoint is stored in."""
     return project_directory / CHECKPOINT_DIRECTORY_NAME / CHECKPOINT_FILE_NAME
 
 
 def save_checkpoint(state: GenerationState, project_directory: Path) -> Path:
-    """Write the current state next to the generated project."""
     destination = checkpoint_path(project_directory)
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(state.model_dump_json(indent=2), encoding="utf-8")

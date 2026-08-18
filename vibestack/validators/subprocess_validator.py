@@ -1,11 +1,4 @@
-"""Run the validation gates on the host, in a separate process.
-
-This validator does not isolate the generated code: it runs with the same
-interpreter and permissions as VibeStack itself. That is a deliberate trade for
-speed, and it is the right choice for tests and continuous integration, where
-the code under test is our own templates. Use the Docker validator for code that
-should not be trusted.
-"""
+"""Run the validation gates on the host, in a separate process."""
 
 import os
 import subprocess
@@ -25,11 +18,9 @@ class SubprocessValidator:
         self._timeout_seconds = timeout_seconds
 
     def describe(self) -> str:
-        """Return a short description, for printing to the user."""
         return "subprocess (fast, no isolation)"
 
     def validate(self, project_directory: Path) -> ValidationResult:
-        """Run every gate against the project and report the first failure."""
         # The child inherits our environment, with the project directory added
         # so that "app" resolves to the generated package.
         environment = dict(os.environ)

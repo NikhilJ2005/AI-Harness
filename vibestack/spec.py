@@ -1,11 +1,4 @@
-"""The structured description of a backend project.
-
-``ProjectSpec`` is the single source of truth for a generation run. The
-natural-language parser fills it in once, and every later stage only reads from
-it. Keeping this as a set of Pydantic models (rather than loose dictionaries)
-means the language model can be constrained to produce exactly this shape, and
-the rest of the code gets full type checking.
-"""
+"""The structured description of a backend project."""
 
 from enum import Enum
 

@@ -1,14 +1,4 @@
-"""A thin wrapper over LiteLLM that returns validated Pydantic objects.
-
-Two responsibilities live here:
-
-1. Structured output — we use ``instructor`` so the model is constrained to
-   return JSON matching a Pydantic model, with automatic re-asks on invalid
-   output. Callers get a typed object, never a raw string.
-2. Model fallback — each request targets a tier (cheap/mid/premium). If the
-   chosen model fails, we try the remaining configured models in order before
-   giving up, so a single provider hiccup does not fail the whole run.
-"""
+"""A thin wrapper over LiteLLM that returns validated Pydantic objects."""
 
 import instructor
 import litellm
@@ -27,7 +17,6 @@ class LLMClient:
         self._structured = instructor.from_litellm(litellm.completion)
 
     def _model_for_tier(self, tier: ModelTier) -> str:
-        """Return the configured model name for a routing tier."""
         if tier is ModelTier.CHEAP:
             return self._settings.cheap_model
         if tier is ModelTier.PREMIUM:
@@ -35,11 +24,7 @@ class LLMClient:
         return self._settings.mid_model
 
     def _fallback_chain(self, tier: ModelTier) -> list[str]:
-        """Return the model to try first, followed by fallbacks.
-
-        We start with the requested tier's model, then fall back to the other
-        configured models. Duplicates are removed while preserving order.
-        """
+        """The requested tier first, then the other models, de-duplicated."""
         candidates = [
             self._model_for_tier(tier),
             self._settings.mid_model,
@@ -59,11 +44,7 @@ class LLMClient:
         response_model: type[ResponseModelT],
         tier: ModelTier = ModelTier.MID,
     ) -> ResponseModelT:
-        """Send the prompts to the model and return a validated object.
-
-        Tries each model in the fallback chain until one succeeds. Raises a
-        ``RuntimeError`` only if every model fails.
-        """
+        """Tries each model in the fallback chain. Raises only if all of them fail."""
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},

@@ -15,12 +15,7 @@ class SandboxKind(str, Enum):
 
 
 def build_validator(kind: SandboxKind = SandboxKind.AUTO):
-    """Return the validator to use.
-
-    ``AUTO`` prefers Docker because it isolates the generated code and also
-    checks the generated Dockerfile, but falls back to a subprocess so that
-    validation still runs on machines without a Docker daemon.
-    """
+    """AUTO prefers Docker for isolation, falling back to a subprocess."""
     if kind is SandboxKind.DOCKER:
         return DockerValidator()
     if kind is SandboxKind.SUBPROCESS:

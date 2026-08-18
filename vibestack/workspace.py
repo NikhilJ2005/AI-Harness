@@ -6,11 +6,7 @@ from vibestack.state import GenerationState
 
 
 def write_workspace(state: GenerationState, output_directory: Path) -> list[Path]:
-    """Write every generated file into ``output_directory``.
-
-    Parent directories are created as needed. Returns the paths written, in
-    sorted order, so callers can report exactly what was produced.
-    """
+    """Creates parent directories. Returns the paths written, sorted."""
     written_paths: list[Path] = []
 
     for relative_path in sorted(state.generated_files):

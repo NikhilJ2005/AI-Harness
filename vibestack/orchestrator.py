@@ -1,9 +1,4 @@
-"""The pipeline that turns a prompt into a validated project on disk.
-
-This function reads top to bottom on purpose: it *is* the architecture. Parse the
-request, generate the files, prove they work, and hand back a project the user
-can run.
-"""
+"""The pipeline that turns a prompt into a validated project on disk."""
 
 from pathlib import Path
 
@@ -25,16 +20,7 @@ def generate_from_spec(
     llm: StructuredLLM | None = None,
     on_progress: ProgressCallback | None = None,
 ) -> GenerationState:
-    """Generate a project from a specification, and prove that it works.
-
-    Args:
-        spec: What to build.
-        output_directory: Where to write the project.
-        validator: How to check the result. Skipped entirely when None.
-        llm: Used to repair failures. Without one, failures are reported but
-            not fixed.
-        on_progress: Optional callback for progress messages.
-    """
+    """Generate, write to disk, then validate and repair if a validator is given."""
     agent = GenerationAgent()
     state = agent.run(spec)
 
@@ -55,12 +41,7 @@ def run_pipeline(
     validator: Validator | None = None,
     on_progress: ProgressCallback | None = None,
 ) -> GenerationState:
-    """Turn a natural-language prompt into a validated project.
-
-    Stage 1 uses the language model, because understanding informal prose is what
-    models are good at. Generation itself is deterministic. The model returns at
-    the end, but only to repair whatever the validation gates caught.
-    """
+    """Prompt to validated project. Only stage 1 and the repairs use a model."""
     spec = parse_prompt_to_spec(prompt, llm)
     return generate_from_spec(
         spec,

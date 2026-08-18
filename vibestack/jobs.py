@@ -1,10 +1,4 @@
-"""Running generations in the background for the API.
-
-Generating, validating, and reviewing a project takes far longer than an HTTP
-request should, so the API starts a job and returns immediately. The client polls
-for progress. Jobs run on a small thread pool because each one spends most of its
-time waiting on a model or a subprocess.
-"""
+"""Running generations in the background for the API."""
 
 import threading
 import uuid
@@ -72,19 +66,12 @@ class JobManager:
         self._jobs: dict[str, Job] = {}
 
     def output_directory(self, job_id: str) -> Path:
-        """Return where a job's project is written."""
         return self._workspace_root / job_id
 
     def has_model(self) -> bool:
-        """Return True when a language model is configured.
-
-        Without one, generation still works from a specification, but prompts
-        cannot be parsed and no review is run.
-        """
         return self._llm is not None
 
     def submit(self, prompt: str = "", spec: ProjectSpec | None = None) -> Job:
-        """Start a job and return it immediately, before any work happens."""
         job_id = uuid.uuid4().hex[:12]
         job = Job(job_id=job_id, prompt=prompt)
 
@@ -95,20 +82,17 @@ class JobManager:
         return job
 
     def get(self, job_id: str) -> Job | None:
-        """Return one job, or None when the id is unknown."""
         with self._lock:
             job = self._jobs.get(job_id)
             return job.model_copy(deep=True) if job is not None else None
 
     def list_jobs(self) -> list[Job]:
-        """Return every job, newest first."""
         with self._lock:
             jobs = [job.model_copy(deep=True) for job in self._jobs.values()]
         jobs.reverse()
         return jobs
 
     def _update(self, job_id: str, **changes) -> None:
-        """Apply changes to a job under the lock."""
         with self._lock:
             job = self._jobs.get(job_id)
             if job is None:
@@ -117,14 +101,12 @@ class JobManager:
                 setattr(job, field_name, value)
 
     def _add_progress(self, job_id: str, message: str) -> None:
-        """Append a progress message to a job."""
         with self._lock:
             job = self._jobs.get(job_id)
             if job is not None:
                 job.progress.append(message)
 
     def _run_job(self, job_id: str, prompt: str, spec: ProjectSpec | None) -> None:
-        """Do the actual work. Runs on a worker thread."""
         try:
             self._update(job_id, status=JobStatus.RUNNING)
 
@@ -168,11 +150,7 @@ class JobManager:
             self._add_progress(job_id, f"Failed: {error}")
 
     def _review_if_possible(self, job_id: str, state) -> CouncilReport | None:
-        """Run the review council, if a model is available.
-
-        A failing review must not fail the job: the project has already been
-        generated and validated by this point.
-        """
+        """A failing review must not fail the job; the project is already generated."""
         if self._llm is None:
             return None
 

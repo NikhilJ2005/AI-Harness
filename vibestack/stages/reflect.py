@@ -1,18 +1,4 @@
-"""Diagnose a failed build and propose a fix.
-
-Repair happens in two steps, and the split is deliberate.
-
-First the failure is *classified* by a set of ordered rules. This part is
-completely deterministic: the same log always produces the same category, it
-costs nothing, and it can be unit tested against real tracebacks. The category
-then selects specific repair guidance, so the model is told what kind of mistake
-it is looking at rather than being asked to work it out from scratch.
-
-Second, only the files the traceback actually mentions are sent to the model,
-together with that guidance. Sending the whole project on every attempt would be
-the obvious approach and also the expensive one; a traceback already says where
-the problem is.
-"""
+"""Diagnose a failed build and propose a fix."""
 
 import re
 from enum import Enum
@@ -135,11 +121,7 @@ class FilePatch(BaseModel):
 
 
 def classify_build_error(logs: str) -> ErrorCategory:
-    """Work out what kind of failure a log describes.
-
-    Walks the rules in order and returns the first category whose markers appear.
-    Being a plain decision list keeps it predictable and easy to test.
-    """
+    """First matching rule wins, so CLASSIFICATION_RULES order matters."""
     for category, markers in CLASSIFICATION_RULES:
         for marker in markers:
             if marker in logs:
@@ -148,12 +130,7 @@ def classify_build_error(logs: str) -> ErrorCategory:
 
 
 def find_referenced_files(logs: str, known_files: list[str]) -> list[str]:
-    """Return the generated files a traceback mentions, most relevant first.
-
-    Python prints the innermost frame last, so the file named at the end of a
-    traceback is usually where the problem is. The list is reversed to put that
-    file first.
-    """
+    """Reversed: the innermost frame is last in a traceback and usually the culprit."""
     quoted_paths = re.findall(r'File "([^"]+)"', logs)
     bare_paths = re.findall(r"([\w/]+\.py)", logs)
     mentioned_paths = quoted_paths + bare_paths
@@ -174,7 +151,6 @@ def build_repair_prompt(
     result: ValidationResult,
     files_to_show: dict[str, str],
 ) -> str:
-    """Assemble the message describing the failure and the relevant files."""
     gate_name = result.failed_gate.value if result.failed_gate else "unknown"
 
     sections = [
@@ -197,11 +173,7 @@ def build_repair_prompt(
 def select_files_for_repair(
     state: GenerationState, result: ValidationResult
 ) -> dict[str, str]:
-    """Pick the files to send to the repair model.
-
-    Only the files named in the traceback are sent. If the log names none, the
-    application entry point is sent as a starting point.
-    """
+    """Only files the traceback names; falls back to the entry point."""
     known_files = sorted(state.generated_files)
     referenced = find_referenced_files(result.logs, known_files)
 
@@ -217,11 +189,7 @@ def propose_patch(
     result: ValidationResult,
     llm: StructuredLLM,
 ) -> FilePatch | None:
-    """Ask the model for a fix, and return it only if it is usable.
-
-    Returns None when there is nothing to send or the model names a file that
-    does not exist, so a bad suggestion can never corrupt the project.
-    """
+    """Returns None if the model names an unknown file or would empty one."""
     category = classify_build_error(result.logs)
     files_to_show = select_files_for_repair(state, result)
     if not files_to_show:

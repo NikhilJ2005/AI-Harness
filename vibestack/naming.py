@@ -1,10 +1,4 @@
-"""Name conversions used when turning a spec into Python code.
-
-Entity names in a ``ProjectSpec`` are written however the parser produced them
-("User", "blog post", "Comment"). Generated code needs consistent class names,
-module names, table names, and URL paths. Every conversion lives here so the
-whole generator agrees on how a given entity is spelled.
-"""
+"""Name conversions used when turning a spec into Python code."""
 
 import re
 
@@ -23,11 +17,7 @@ SIBILANT_ENDINGS = ("s", "x", "z", "ch", "sh")
 
 
 def to_snake_case(name: str) -> str:
-    """Convert a name to snake_case.
-
-    Handles spaces, hyphens, and CamelCase, so "BlogPost", "blog post", and
-    "blog-post" all become "blog_post".
-    """
+    """Handles spaces, hyphens and CamelCase: "HTTPResponse" -> "http_response"."""
     # Split a run of capitals from a following word, so "HTTPResponse" becomes
     # "HTTP Response" rather than one unreadable word.
     spaced = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", " ", name)
@@ -40,18 +30,13 @@ def to_snake_case(name: str) -> str:
 
 
 def to_class_name(name: str) -> str:
-    """Convert a name to a Python class name, for example "blog post" -> "BlogPost"."""
     words = to_snake_case(name).split("_")
     capitalised_words = [word.capitalize() for word in words if word]
     return "".join(capitalised_words)
 
 
 def pluralise(word: str) -> str:
-    """Return the plural form of a single lowercase word.
-
-    This covers the regular English rules plus a short list of irregular words.
-    It does not need to be perfect: it only shapes table names and URL paths.
-    """
+    """Regular English rules plus a short irregular list. Only shapes table names and URLs."""
     if word in IRREGULAR_PLURALS:
         return IRREGULAR_PLURALS[word]
 
@@ -67,7 +52,6 @@ def pluralise(word: str) -> str:
 
 
 def to_table_name(entity_name: str) -> str:
-    """Return the database table name for an entity, for example "User" -> "users"."""
     snake_name = to_snake_case(entity_name)
     words = snake_name.split("_")
     # Only the final word is pluralised: "blog_post" -> "blog_posts".
@@ -76,10 +60,8 @@ def to_table_name(entity_name: str) -> str:
 
 
 def to_module_name(entity_name: str) -> str:
-    """Return the Python module name for an entity, for example "BlogPost" -> "blog_post"."""
     return to_snake_case(entity_name)
 
 
 def to_route_prefix(entity_name: str) -> str:
-    """Return the URL path segment for an entity, for example "User" -> "users"."""
     return to_table_name(entity_name).replace("_", "-")
