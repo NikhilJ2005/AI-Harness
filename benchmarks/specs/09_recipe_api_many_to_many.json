@@ -1,0 +1,39 @@
+{
+  "project_name": "recipe_api",
+  "description": "A recipe API. Declares a many-to-many link, which is not supported yet and must be skipped without breaking the build.",
+  "entities": [
+    {
+      "name": "Chef",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "email", "type": "str", "unique": true, "nullable": false },
+        { "name": "name", "type": "str", "nullable": false }
+      ],
+      "relationships": [
+        { "target_entity": "Recipe", "type": "one_to_many", "back_populates": "chef" }
+      ]
+    },
+    {
+      "name": "Recipe",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "title", "type": "str", "nullable": false },
+        { "name": "method", "type": "text", "nullable": true },
+        { "name": "minutes", "type": "int", "nullable": false }
+      ],
+      "relationships": [
+        { "target_entity": "Ingredient", "type": "many_to_many", "back_populates": "recipes" }
+      ]
+    },
+    {
+      "name": "Ingredient",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "name", "type": "str", "unique": true, "nullable": false }
+      ],
+      "relationships": []
+    }
+  ],
+  "auth": { "enabled": true, "strategy": "jwt", "endpoints": ["register", "login", "me"] },
+  "features": []
+}

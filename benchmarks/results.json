@@ -1,0 +1,156 @@
+{
+  "healing_enabled": false,
+  "sandbox": "subprocess (fast, no isolation)",
+  "results": [
+    {
+      "name": "01_notes_api",
+      "project_name": "notes_api",
+      "generated": true,
+      "validated": true,
+      "file_count": 17,
+      "ledger_entries": 17,
+      "plan_notes": [],
+      "heal_attempts": 0,
+      "failed_gate": "",
+      "duration_seconds": 2.4,
+      "error": ""
+    },
+    {
+      "name": "02_blog_api",
+      "project_name": "blog_api",
+      "generated": true,
+      "validated": true,
+      "file_count": 25,
+      "ledger_entries": 26,
+      "plan_notes": [
+        "Added 'password_hash' to User to store passwords."
+      ],
+      "heal_attempts": 0,
+      "failed_gate": "",
+      "duration_seconds": 2.47,
+      "error": ""
+    },
+    {
+      "name": "03_shop_api",
+      "project_name": "shop_api",
+      "generated": true,
+      "validated": true,
+      "file_count": 28,
+      "ledger_entries": 30,
+      "plan_notes": [
+        "Treated Customer as the account entity for authentication, because it carries a login field.",
+        "Added 'password_hash' to Customer to store passwords."
+      ],
+      "heal_attempts": 0,
+      "failed_gate": "",
+      "duration_seconds": 2.52,
+      "error": ""
+    },
+    {
+      "name": "04_library_api",
+      "project_name": "library_api",
+      "generated": true,
+      "validated": true,
+      "file_count": 25,
+      "ledger_entries": 26,
+      "plan_notes": [
+        "Added 'password_hash' to Member to store passwords."
+      ],
+      "heal_attempts": 0,
+      "failed_gate": "",
+      "duration_seconds": 2.6,
+      "error": ""
+    },
+    {
+      "name": "05_forum_api",
+      "project_name": "forum_api",
+      "generated": true,
+      "validated": true,
+      "file_count": 25,
+      "ledger_entries": 26,
+      "plan_notes": [
+        "Added 'password_hash' to ForumUser to store passwords."
+      ],
+      "heal_attempts": 0,
+      "failed_gate": "",
+      "duration_seconds": 2.57,
+      "error": ""
+    },
+    {
+      "name": "06_crm_api",
+      "project_name": "crm_api",
+      "generated": true,
+      "validated": true,
+      "file_count": 23,
+      "ledger_entries": 23,
+      "plan_notes": [],
+      "heal_attempts": 0,
+      "failed_gate": "",
+      "duration_seconds": 2.42,
+      "error": ""
+    },
+    {
+      "name": "07_fitness_api_plain_password",
+      "project_name": "fitness_api",
+      "generated": true,
+      "validated": true,
+      "file_count": 22,
+      "ledger_entries": 24,
+      "plan_notes": [
+        "Replaced the plain 'password' field on User with 'password_hash' so passwords are never stored in clear text.",
+        "Added 'password_hash' to User to store passwords."
+      ],
+      "heal_attempts": 0,
+      "failed_gate": "",
+      "duration_seconds": 2.33,
+      "error": ""
+    },
+    {
+      "name": "08_event_api_missing_key",
+      "project_name": "event_api",
+      "generated": true,
+      "validated": true,
+      "file_count": 25,
+      "ledger_entries": 28,
+      "plan_notes": [
+        "Added an 'id' primary key to Ticket.",
+        "Treated Attendee as the account entity for authentication, because it carries a login field.",
+        "Added 'password_hash' to Attendee to store passwords."
+      ],
+      "heal_attempts": 0,
+      "failed_gate": "",
+      "duration_seconds": 2.47,
+      "error": ""
+    },
+    {
+      "name": "09_recipe_api_many_to_many",
+      "project_name": "recipe_api",
+      "generated": true,
+      "validated": true,
+      "file_count": 25,
+      "ledger_entries": 28,
+      "plan_notes": [
+        "Skipped a many-to-many relationship between Recipe and Ingredient: association tables are not supported yet.",
+        "Treated Chef as the account entity for authentication, because it carries a login field.",
+        "Added 'password_hash' to Chef to store passwords."
+      ],
+      "heal_attempts": 0,
+      "failed_gate": "",
+      "duration_seconds": 2.4,
+      "error": ""
+    },
+    {
+      "name": "10_inventory_api",
+      "project_name": "inventory_api",
+      "generated": true,
+      "validated": true,
+      "file_count": 20,
+      "ledger_entries": 20,
+      "plan_notes": [],
+      "heal_attempts": 0,
+      "failed_gate": "",
+      "duration_seconds": 2.37,
+      "error": ""
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "project_name": "crm_api",
+  "description": "A customer relationship tool with companies, contacts, and deals, and no authentication.",
+  "entities": [
+    {
+      "name": "Company",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "name", "type": "str", "unique": true, "nullable": false },
+        { "name": "industry", "type": "str", "nullable": true }
+      ],
+      "relationships": [
+        { "target_entity": "Contact", "type": "one_to_many", "back_populates": "company" },
+        { "target_entity": "Deal", "type": "one_to_many", "back_populates": "company" }
+      ]
+    },
+    {
+      "name": "Contact",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "email", "type": "str", "unique": true, "nullable": false },
+        { "name": "full_name", "type": "str", "nullable": false }
+      ],
+      "relationships": []
+    },
+    {
+      "name": "Deal",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "title", "type": "str", "nullable": false },
+        { "name": "value", "type": "float", "nullable": false },
+        { "name": "won", "type": "bool", "nullable": false }
+      ],
+      "relationships": []
+    }
+  ],
+  "auth": { "enabled": false, "strategy": "jwt", "endpoints": [] },
+  "features": ["search"]
+}

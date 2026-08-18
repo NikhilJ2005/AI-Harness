@@ -1,0 +1,40 @@
+{
+  "project_name": "forum_api",
+  "description": "A discussion forum. Uses CamelCase entity names to exercise name conversion.",
+  "entities": [
+    {
+      "name": "ForumUser",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "username", "type": "str", "unique": true, "nullable": false },
+        { "name": "reputation", "type": "int", "nullable": false }
+      ],
+      "relationships": [
+        { "target_entity": "ForumThread", "type": "one_to_many", "back_populates": "author" }
+      ]
+    },
+    {
+      "name": "ForumThread",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "title", "type": "str", "nullable": false },
+        { "name": "locked", "type": "bool", "nullable": false },
+        { "name": "created_at", "type": "datetime", "nullable": false }
+      ],
+      "relationships": [
+        { "target_entity": "ThreadReply", "type": "one_to_many", "back_populates": "thread" }
+      ]
+    },
+    {
+      "name": "ThreadReply",
+      "fields": [
+        { "name": "id", "type": "int", "primary_key": true, "nullable": false },
+        { "name": "body", "type": "text", "nullable": false },
+        { "name": "created_at", "type": "datetime", "nullable": false }
+      ],
+      "relationships": []
+    }
+  ],
+  "auth": { "enabled": true, "strategy": "jwt", "endpoints": ["register", "login", "me"] },
+  "features": []
+}
